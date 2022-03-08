@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "ctsm-api"
+version = "0.1.0"
+description = ""
+authors = ["kaveh <ka7eh@pm.me>"]
+license = "ISC"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+uvicorn = "^0.17.5"
+fastapi = "^0.75.0"
+pydantic = {extras = ["dotenv"], version = "^1.9.0"}
+gunicorn = "^20.1.0"
+SQLAlchemy = {extras = ["mypy"], version = "^1.4.32"}
+alembic = "^1.7.6"
+python-dateutil = "^2.8.2"
+
+[tool.poetry.dev-dependencies]
+mypy = "^0.931"
+black = "^22.1.0"
+isort = "^5.10.1"
+autoflake = "^1.4"
+flake8 = "^4.0.1"
+pre-commit = "^2.17.0"
+pytest = "^7.0.1"
+pytest-cov = "^3.0.0"
+requests = "^2.27.1"
+sqlalchemy2-stubs = "^0.0.2-alpha.20"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+line_length = 88
