@@ -1,0 +1,10 @@
+version: "3.9"
+
+services:
+  api:
+    image: ghcr.io/ka7eh/ctsm-api:${VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - ${PORT:-8000}:8000
+    volumes:
+      - ./resources:/ctsm-api/resources

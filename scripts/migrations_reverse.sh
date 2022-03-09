@@ -1,6 +1,8 @@
 #! /bin/bash
 
-export PYTHONPATH=$PWD
+set -e
+
+export PYTHONPATH=$(dirname $(dirname $(realpath $0)))
 
 if [[ -z "$1" ]]; then
   echo "Specify the revision to reverse to."

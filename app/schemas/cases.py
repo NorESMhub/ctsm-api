@@ -8,12 +8,24 @@ class Driver(str, Enum):
     mct = "mct"
 
 
+class Status(str, Enum):
+    initialised = "initialised"
+    created = "created"
+    setup = "setup"
+    built = "built"
+    submitted = "submitted"
+    succeeded = "succeeded"
+    failed = "failed"
+
+
 class CaseSchemaBase(BaseModel):
     id: int
     name: str
     compset: str
     res: str
     driver: Driver = Driver.noupc
+    ctsm_tag: str
+    status: Status = Status.initialised
 
 
 class CaseSchema(CaseSchemaBase):

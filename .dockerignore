@@ -2,7 +2,6 @@
 .github
 .mypy_cache
 .pytest_cache
-data
 htmlcov
 resources
 venv

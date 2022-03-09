@@ -12,3 +12,4 @@ class CaseModel(Base):
     res: str = Column(String(100), nullable=False, index=True)
     driver: str = Column(String(5), nullable=False, index=True)
     ctsm_tag: str = Column(String(20), nullable=False, index=True)
+    status: str = Column(String(20), nullable=False, index=True)

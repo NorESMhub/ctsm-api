@@ -23,7 +23,7 @@ def check_ctsm(errors: List[str]) -> None:
 
     proc = subprocess.run(["git", "describe"], cwd=CTSM_ROOT, capture_output=True)
     if proc.returncode != 0 or proc.stdout.strip().decode("utf8") != settings.CTSM_TAG:
-        errors.append(f"CTSM is not setup correctly. Run `setup_ctsm` first.")
+        errors.append("CTSM is not setup correctly. Run `setup_ctsm` first.")
 
 
 def check_dependencies() -> None:
@@ -43,7 +43,7 @@ def check_dependencies() -> None:
         raise Exception("\n".join(errors))
 
 
-def checkout_externals():
+def checkout_externals() -> None:
     proc = subprocess.run(["manage_externals/checkout_externals"], cwd=CTSM_ROOT)
     if proc.returncode != 0:
         logger.error(f"Could not checkout externals: {proc.stderr.decode('utf-8')}.")
@@ -74,7 +74,7 @@ def setup_ctsm() -> None:
             "-b",
             settings.CTSM_TAG,
             settings.CTSM_REPO,
-            f"resources/ctsm",
+            "resources/ctsm",
         ],
         capture_output=True,
     )

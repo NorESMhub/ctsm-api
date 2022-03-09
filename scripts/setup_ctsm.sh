@@ -1,7 +1,7 @@
 #! /bin/bash
 
-set -x
+set -e
 
-export PYTHONPATH=$PWD
+export PYTHONPATH=$(dirname $(dirname $(realpath $0)))
 
 python app/utils/dependencies.py

@@ -1,3 +1,12 @@
 DEBUG=1
+
+# DB
 SQLITE_DB=cases.sqlite
 SQLITE_DB_TEST=cases_test.sqlite
+
+# CTSM
+CTSM_REPO=https://github.com/ESCOMP/CTSM/
+CTSM_TAG=ctsm5.1.dev083
+
+# Docker
+PORT=8000

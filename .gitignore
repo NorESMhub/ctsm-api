@@ -15,5 +15,6 @@ venv/
 .env
 
 # Data
-resources/
+resources/*
 !resources/.gitkeep
+*.sqlite

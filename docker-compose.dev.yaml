@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  api:
+    extends:
+      file: docker-compose.yaml
+      service: api
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    volumes:
+      - .:/ctsm-api

@@ -15,7 +15,7 @@ API_V1 = "/api/v1"
 class Settings(BaseSettings):
     DEBUG: bool = False
 
-    CTSM_TAG: str = "master"
+    CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
 
     SQLITE_DB_TEST: str = "cases_test.sqlite"
