@@ -2,16 +2,13 @@
 
 set -e
 
-echo $HOST_USER
-echo $HOST_UID
-
 if [[ $HOST_USER && $HOST_UID ]]; then
   id -u "$HOST_USER" &>/dev/null || adduser --disabled-password --no-create-home --uid "$HOST_UID" "$HOST_USER"
   chown -R "$HOST_USER":"$HOST_USER" /ctsm-api/resources
   export USER="$HOST_USER"
 fi
 
-sudo -s -u "$USER" bash <<EOF
+sudo -s -E -u "$USER" bash <<EOF
 
 cd /ctsm-api
 
