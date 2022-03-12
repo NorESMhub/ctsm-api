@@ -1,1 +1,8 @@
-from .cases import CaseSchema, CaseSchemaCreate, CaseSchemaDB, CaseSchemaUpdate
+from .cases import (
+    CaseSchema,
+    CaseSchemaBase,
+    CaseSchemaCreate,
+    CaseSchemaUpdate,
+    CaseWithTaskInfo,
+)
+from .tasks import TaskSchema

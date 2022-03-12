@@ -9,7 +9,11 @@ from app.utils.type_casting import to_bool
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
+CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 API_V1 = "/api/v1"
+
+if not CASES_ROOT.exists():
+    CASES_ROOT.mkdir(parents=True)
 
 
 class Settings(BaseSettings):
@@ -30,6 +34,9 @@ class Settings(BaseSettings):
         )
 
     SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{SQLITE_DB}"
+
+    CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
+    CELERY_RESULT_BACKEND: str = f"db+{SQLALCHEMY_DATABASE_URI}"
 
     class Config:
         env_file = PROJECT_ROOT / ".env"

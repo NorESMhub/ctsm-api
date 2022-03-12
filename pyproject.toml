@@ -14,6 +14,7 @@ gunicorn = "^20.1.0"
 SQLAlchemy = {extras = ["mypy"], version = "^1.4.32"}
 alembic = "^1.7.6"
 python-dateutil = "^2.8.2"
+celery = {extras = ["librabbitmq"], version = "^5.2.3"}
 
 [tool.poetry.dev-dependencies]
 mypy = "^0.931"
@@ -26,6 +27,7 @@ pytest = "^7.0.1"
 pytest-cov = "^3.0.0"
 requests = "^2.27.1"
 sqlalchemy2-stubs = "^0.0.2-alpha.20"
+watchdog = {extras = ["watchmedo"], version = "^2.1.6"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

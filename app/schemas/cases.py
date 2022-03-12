@@ -2,9 +2,11 @@ from enum import Enum
 
 from pydantic import BaseModel
 
+from .tasks import get_item_with_task_info
+
 
 class Driver(str, Enum):
-    noupc = "noupc"
+    nuopc = "nuopc"
     mct = "mct"
 
 
@@ -19,20 +21,35 @@ class Status(str, Enum):
 
 
 class CaseSchemaBase(BaseModel):
-    id: int
     name: str
     compset: str
     res: str
-    driver: Driver = Driver.noupc
+    driver: Driver = Driver.nuopc
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "name": "example_case",
+                "compset": "I2000Clm50Sp",
+                "res": "f19_g17",
+                "driver": "nuopc",
+            }
+        }
+
+
+class CaseSchemaDBBase(CaseSchemaBase):
     ctsm_tag: str
     status: Status = Status.initialised
 
+    class Config:
+        orm_mode = True
 
-class CaseSchema(CaseSchemaBase):
-    pass
+
+class CaseSchema(CaseSchemaDBBase):
+    id: str
 
 
-class CaseSchemaCreate(CaseSchema):
+class CaseSchemaCreate(CaseSchemaDBBase):
     pass
 
 
@@ -40,6 +57,4 @@ class CaseSchemaUpdate(CaseSchema):
     pass
 
 
-class CaseSchemaDB(CaseSchemaBase):
-    class Config:
-        orm_mode = True
+CaseWithTaskInfo = get_item_with_task_info(CaseSchema)
