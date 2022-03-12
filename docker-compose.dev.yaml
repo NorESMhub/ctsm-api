@@ -10,3 +10,10 @@ services:
       dockerfile: ./docker/Dockerfile
     volumes:
       - .:/ctsm-api
+
+  rabbitmq:
+    extends:
+      file: docker-compose.yaml
+      service: rabbitmq
+    volumes:
+      - .:/ctsm-rabbitmq

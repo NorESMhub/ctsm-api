@@ -4,7 +4,25 @@ services:
   api:
     image: ghcr.io/ka7eh/ctsm-api:${VERSION:-latest}
     restart: unless-stopped
+    environment:
+      - HOST_USER=${HOST_USER}
+      - HOST_UID=${HOST_UID}
+      - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin}@rabbitmq:5672/
+    networks:
+      - default
     ports:
       - ${PORT:-8000}:8000
     volumes:
       - ./resources:/ctsm-api/resources
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    networks:
+      - default
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-admin}
+
+networks:
+  default:
