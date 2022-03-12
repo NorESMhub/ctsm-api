@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.api_v1.endpoints import cases, tasks
+from app.api.v1.endpoints import cases, tasks
 
 # Add all the API endpoints from the endpoints folder
 api_router = APIRouter()

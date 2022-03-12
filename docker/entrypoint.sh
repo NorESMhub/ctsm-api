@@ -15,7 +15,12 @@ cd /ctsm-api
 ./scripts/setup_ctsm.sh
 ./scripts/migrations_forward.sh
 
-celery -A app.tasks worker -E --loglevel INFO &
-uvicorn app.main:app --reload --host 0.0.0.0
+if [[ $DEBUG && $DEBUG == 1 ]]; then
+  watchmedo auto-restart --directory=./app --pattern="*.py" --recursive -- celery -A app.tasks worker -E --loglevel DEBUG &
+  uvicorn app.main:app --reload --host 0.0.0.0
+else
+  celery -A app.tasks worker -E --loglevel INFO &
+  uvicorn app.main:app --host 0.0.0.0
+fi
 
 EOF

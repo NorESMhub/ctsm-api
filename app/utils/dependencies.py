@@ -62,7 +62,8 @@ def setup_ctsm() -> None:
         proc = subprocess.run(["git", "fetch", "--all"], cwd=CTSM_ROOT)
         if proc.returncode != 0:
             logger.warning(
-                f"Could not fetch the latest changes from CTSM remote: {proc.stderr.decode('utf-8')}."
+                "Could not fetch the latest changes from CTSM remote: "
+                f"{proc.stderr.decode('utf-8')}."
             )
 
         proc = subprocess.run(["git", "checkout", settings.CTSM_TAG], cwd=CTSM_ROOT)

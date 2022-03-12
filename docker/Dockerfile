@@ -1,7 +1,7 @@
 FROM python:3.10-bullseye
 
 RUN apt update && apt upgrade -y
-RUN apt install -u sudo
+RUN apt install -u sudo libxml2-utils
 
 RUN pip install --upgrade pip setuptools
 RUN pip install poetry

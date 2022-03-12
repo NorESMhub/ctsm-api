@@ -1,12 +1,12 @@
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
 SchemaType = TypeVar("SchemaType", bound=BaseModel)
 
 
-class Status(str, Enum):
+class TaskStatus(str, Enum):
     PENDING = "PENDING"
     STARTED = "STARTED"
     SUCCESS = "SUCCESS"
@@ -20,12 +20,5 @@ class Status(str, Enum):
 
 class TaskSchema(BaseModel):
     task_id: str
-    status: Status
+    status: TaskStatus
     result: Any
-
-
-def get_item_with_task_info(schema_type: Generic[SchemaType]):
-    class ItemWithTaskInfoSchema(TaskSchema):
-        item: SchemaType
-
-    return ItemWithTaskInfoSchema

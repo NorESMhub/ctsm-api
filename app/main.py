@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.api_v1.api import api_router
+from app.api.v1.api import api_router
 from app.core.config import API_V1, get_settings
 from app.utils.dependencies import check_dependencies
 from app.utils.logger import logger

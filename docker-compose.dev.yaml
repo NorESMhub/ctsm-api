@@ -8,6 +8,8 @@ services:
     build:
       context: .
       dockerfile: ./docker/Dockerfile
+    environment:
+      - DEBUG=1
     volumes:
       - .:/ctsm-api
 

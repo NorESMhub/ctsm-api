@@ -1,16 +1,20 @@
+from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 
-from .tasks import get_item_with_task_info
+from .tasks import TaskSchema
 
 
-class Driver(str, Enum):
+class CTSMDriver(str, Enum):
+    """The driver to use with CTSM create_newcase script."""
+
     nuopc = "nuopc"
     mct = "mct"
 
 
-class Status(str, Enum):
+class CaseStatus(str, Enum):
     initialised = "initialised"
     created = "created"
     setup = "setup"
@@ -24,7 +28,7 @@ class CaseSchemaBase(BaseModel):
     name: str
     compset: str
     res: str
-    driver: Driver = Driver.nuopc
+    driver: CTSMDriver = CTSMDriver.nuopc
 
     class Config:
         schema_extra = {
@@ -37,9 +41,15 @@ class CaseSchemaBase(BaseModel):
         }
 
 
+class CaseSchemaCreate(CaseSchemaBase):
+    pass
+
+
 class CaseSchemaDBBase(CaseSchemaBase):
     ctsm_tag: str
-    status: Status = Status.initialised
+    status: CaseStatus = CaseStatus.initialised
+    date_created: datetime = datetime.now()
+    task_id: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -49,7 +59,7 @@ class CaseSchema(CaseSchemaDBBase):
     id: str
 
 
-class CaseSchemaCreate(CaseSchemaDBBase):
+class CaseSchemaCreateDB(CaseSchema):
     pass
 
 
@@ -57,4 +67,5 @@ class CaseSchemaUpdate(CaseSchema):
     pass
 
 
-CaseWithTaskInfo = get_item_with_task_info(CaseSchema)
+class CaseSchemaWithTaskInfo(TaskSchema):
+    case: CaseSchema
