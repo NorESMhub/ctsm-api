@@ -21,7 +21,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=List[CaseSchema])
-def get_cases(
+def get_sites(
     db: Session = Depends(get_db),
 ) -> Any:
     """

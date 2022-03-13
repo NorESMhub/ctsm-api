@@ -1,7 +1,5 @@
 import subprocess
 
-from celery.states import FAILURE
-
 from app.core.config import CASES_ROOT, CTSM_ROOT, get_settings
 from app.crud import crud_case
 from app.db.session import SessionLocal
@@ -15,7 +13,7 @@ settings = get_settings()
 
 
 @celery_app.task
-def create_case_task(case: CaseModel) -> None:
+def create_case_task(case: CaseModel) -> str:
 
     logger.info(
         f"Creating case {case.id} with the following attributes:\n"
@@ -46,10 +44,22 @@ def create_case_task(case: CaseModel) -> None:
         capture_output=True,
     )
 
-    if proc.returncode == 0:
-        with SessionLocal() as db:
-            crud_case.update(db, db_obj=case, obj_in={"status": CaseStatus.created})
-    else:
-        logger.error("Failed to create case {}".format(case.id))
-        logger.error(proc.stderr.decode("utf-8"))
-        create_case_task.update_state(state=FAILURE)
+    if proc.returncode != 0:
+        raise Exception(f"Failed to create case {case.id}: {proc.stderr}")
+
+    with SessionLocal() as db:
+        crud_case.update(db, db_obj=case, obj_in={"status": CaseStatus.created})
+
+    proc = subprocess.run(
+        ["./case.setup"], cwd=CASES_ROOT / case.id, capture_output=True
+    )
+    if proc.returncode != 0:
+        raise Exception(f"Failed to setup case {case.id}: {proc.stderr}")
+
+    proc = subprocess.run(
+        ["./case.build"], cwd=CASES_ROOT / case.id, capture_output=True
+    )
+    if proc.returncode != 0:
+        raise Exception(f"Failed to build case {case.id}: {proc.stderr}")
+
+    return "Case created successfully"
