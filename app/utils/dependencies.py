@@ -44,7 +44,9 @@ def check_dependencies() -> None:
 
 
 def checkout_externals() -> None:
-    proc = subprocess.run(["manage_externals/checkout_externals"], cwd=CTSM_ROOT)
+    proc = subprocess.run(
+        ["manage_externals/checkout_externals"], cwd=CTSM_ROOT, capture_output=True
+    )
     if proc.returncode != 0:
         logger.error(f"Could not checkout externals: {proc.stderr.decode('utf-8')}.")
 
@@ -59,14 +61,18 @@ def setup_ctsm() -> None:
             checkout_externals()
             return
 
-        proc = subprocess.run(["git", "fetch", "--all"], cwd=CTSM_ROOT)
+        proc = subprocess.run(
+            ["git", "fetch", "--all"], cwd=CTSM_ROOT, capture_output=True
+        )
         if proc.returncode != 0:
             logger.warning(
                 "Could not fetch the latest changes from CTSM remote: "
                 f"{proc.stderr.decode('utf-8')}."
             )
 
-        proc = subprocess.run(["git", "checkout", settings.CTSM_TAG], cwd=CTSM_ROOT)
+        proc = subprocess.run(
+            ["git", "checkout", settings.CTSM_TAG], cwd=CTSM_ROOT, capture_output=True
+        )
         if proc.returncode != 0:
             logger.error(f"Could not checkout CTSM {settings.CTSM_TAG}.")
             return

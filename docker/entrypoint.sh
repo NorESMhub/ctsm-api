@@ -2,10 +2,33 @@
 
 set -e
 
+USER=root
+HOME=/root
+
 if [[ $HOST_USER && $HOST_UID ]]; then
-  id -u "$HOST_USER" &>/dev/null || adduser --disabled-password --no-create-home --uid "$HOST_UID" "$HOST_USER"
+  id -u "$HOST_USER" &>/dev/null || adduser --disabled-password --uid "$HOST_UID" "$HOST_USER"
   chown -R "$HOST_USER":"$HOST_USER" /ctsm-api/resources
-  export USER="$HOST_USER"
+  USER="$HOST_USER"
+
+  cat >>/home/$USER/.bashrc <<EOF
+
+export CIME_MACHINE=container
+export MPICC=mpicc
+export MPIFC=mpif90
+export MPIF90=mpif90
+export MPIF77=mpif77
+
+EOF
+
+export HOME=/home/$USER
+export CIME_MACHINE=container
+export MPICC=mpicc
+export MPIFC=mpif90
+export MPIF90=mpif90
+export MPIF77=mpif77
+
+ln -s /ctsm-api/resources/dotcime /home/$USER/.cime
+
 fi
 
 sudo -s -E -u "$USER" bash <<EOF

@@ -10,9 +10,9 @@ settings = get_settings()
 
 class CRUDCase(CRUDBase[CaseModel, CaseSchemaCreateDB, CaseSchemaUpdate]):
     @staticmethod
-    def get_case_path(compset: str, res: str, driver: str) -> str:
+    def get_case_path(compset: str, res: str, driver: str, data_url: str) -> str:
         case_path = bytes(
-            f"{compset}_{res}_{driver}_{settings.CTSM_TAG}".encode("utf-8")
+            f"{compset}_{res}_{driver}_{data_url}_{settings.CTSM_TAG}".encode("utf-8")
         )
         return hashlib.md5(case_path).hexdigest()
 

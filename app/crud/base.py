@@ -121,7 +121,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db.refresh(db_obj)
         return db_obj
 
-    def remove(self, db: Session, *, id: int) -> Optional[ModelType]:
+    def remove(self, db: Session, *, id: Union[int, str]) -> Optional[ModelType]:
         """Delete the database object for the given id.
 
         Parameters

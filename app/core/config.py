@@ -1,17 +1,24 @@
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
-from pydantic import AnyHttpUrl, BaseSettings, validator
+from pydantic import AnyHttpUrl, BaseSettings, parse_file_as, validator
 
+from app.schemas import SiteSchema
 from app.utils.type_casting import to_bool
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
+SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 API_V1 = "/api/v1"
+
+if SITES_PATH.exists():
+    SITES = parse_file_as(List[SiteSchema], SITES_PATH)
+else:
+    SITES = []
 
 if not CASES_ROOT.exists():
     CASES_ROOT.mkdir(parents=True)
@@ -22,7 +29,7 @@ class Settings(BaseSettings):
 
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
-    DATA_ROOT: Path = os.environ.setdefault("CESMDATAROOT", str(DATA_ROOT.resolve()))
+    MACHINE_NAME: str = "container"
 
     SQLITE_DB_TEST: str = "cases_test.sqlite"
     SQLITE_DB: str = "cases.sqlite"

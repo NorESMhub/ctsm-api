@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, TypeVar
+from typing import Any, Optional, TypeVar
 
 from pydantic import BaseModel
 
@@ -22,3 +22,4 @@ class TaskSchema(BaseModel):
     task_id: str
     status: TaskStatus
     result: Any
+    error: Optional[str]

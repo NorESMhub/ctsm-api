@@ -7,4 +7,5 @@ from .cases import (
     CaseSchemaWithTaskInfo,
     CaseStatus,
 )
+from .sites import SiteSchema
 from .tasks import TaskSchema

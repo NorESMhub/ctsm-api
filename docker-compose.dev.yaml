@@ -10,8 +10,6 @@ services:
       dockerfile: ./docker/Dockerfile
     environment:
       - DEBUG=1
-    volumes:
-      - .:/ctsm-api
 
   rabbitmq:
     extends:

@@ -44,14 +44,18 @@ def get_case(
         return None
 
     task = celery_app.AsyncResult(case.task_id)
+    error = task.traceback.strip().split("\n")[-1] if task.traceback else None
+
     return CaseSchemaWithTaskInfo(
-        case=case, task_id=task.id, status=task.status, result=task.result
+        case=case, task_id=task.id, status=task.status, result=task.result, error=error
     )
 
 
 @router.post("/", response_model=CaseSchemaWithTaskInfo)
 def create_case(*, db: Session = Depends(get_db), data: CaseSchemaCreate) -> Any:
-    case_path = crud_case.get_case_path(data.compset, data.res, data.driver)
+    case_path = crud_case.get_case_path(
+        data.compset, data.res, data.driver, data.data_url
+    )
     case = crud_case.get(db, case_path)
 
     if case:
@@ -67,11 +71,15 @@ def create_case(*, db: Session = Depends(get_db), data: CaseSchemaCreate) -> Any
         task = create_case_task.delay(case)
         case = crud_case.update(db, db_obj=case, obj_in={"task_id": task.id})
 
+    crud_case.update(db, db_obj=case, obj_in={"task_id": task.id})
+    error = task.traceback.strip().split("\n")[-1] if task.traceback else None
+
     return CaseSchemaWithTaskInfo(
         case=CaseSchema.from_orm(case),
         task_id=task.id,
         status=task.status,
         result=task.result,
+        error=error,
     )
 
 

@@ -28,15 +28,17 @@ class CaseSchemaBase(BaseModel):
     name: str
     compset: str
     res: str
-    driver: CTSMDriver = CTSMDriver.nuopc
+    driver: CTSMDriver = CTSMDriver.mct
+    data_url: str
 
     class Config:
         schema_extra = {
             "example": {
-                "name": "example_case",
-                "compset": "I2000Clm50Sp",
-                "res": "f19_g17",
+                "name": "ALP1",
+                "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
+                "res": "1x1_ALP1",
                 "driver": "nuopc",
+                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",  # noqa: E501
             }
         }
 
