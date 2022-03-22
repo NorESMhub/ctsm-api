@@ -6,7 +6,7 @@ from app.db.base_class import Base
 class CaseModel(Base):
     __tablename__ = "cases"
 
-    # Id is calculated from the case compset, res, and driver,
+    # id is calculated from the case compset, res, and driver,
     # and used as the case path.
     id: str = Column(String(32), primary_key=True, index=True)
     name: str = Column(String(300), nullable=False)

@@ -8,6 +8,9 @@ settings = get_settings()
 
 
 def check_git(errors: List[str]) -> None:
+    """
+    Check if git is installed.
+    """
     try:
         proc = subprocess.run(["git", "--version"], capture_output=True)
         if proc.returncode != 0:
@@ -17,6 +20,9 @@ def check_git(errors: List[str]) -> None:
 
 
 def check_ctsm(errors: List[str]) -> None:
+    """
+    Check if the correct version of CTSM is available in `resources/ctsm`.
+    """
     if not CTSM_ROOT.exists():
         errors.append("CTSM is not setup. Run `setup_ctsm` first.")
         return
@@ -44,6 +50,9 @@ def check_dependencies() -> None:
 
 
 def checkout_externals() -> None:
+    """
+    Checkout CTSM externals.
+    """
     proc = subprocess.run(
         ["manage_externals/checkout_externals"], cwd=CTSM_ROOT, capture_output=True
     )
@@ -52,6 +61,10 @@ def checkout_externals() -> None:
 
 
 def setup_ctsm() -> None:
+    """
+    TODO: add better checkout and cleanup process.
+    Clone CTSM with and switch to the correct tag as specified in the settings.
+    """
     if CTSM_ROOT.exists():
         proc = subprocess.run(["git", "describe"], cwd=CTSM_ROOT, capture_output=True)
         if (

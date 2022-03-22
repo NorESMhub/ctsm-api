@@ -10,6 +10,11 @@ celery_app = Celery(
 
 
 class CeleryConfig:
+    """
+    Change the default serializer to allow passing of db models
+    and pydantic schemas to celery tasks.
+    """
+
     task_serializer = "pickle"
     result_serializer = "pickle"
     event_serializer = "json"

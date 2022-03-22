@@ -37,7 +37,7 @@ class CaseSchemaBase(BaseModel):
                 "name": "ALP1",
                 "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
                 "res": "1x1_ALP1",
-                "driver": "nuopc",
+                "driver": "mct",
                 "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",  # noqa: E501
             }
         }

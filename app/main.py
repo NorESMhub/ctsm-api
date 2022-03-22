@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import api_router
 from app.core.config import API_V1, get_settings
@@ -18,6 +19,14 @@ app = FastAPI(
     openapi_url=f"{API_V1}/openapi.json",
     docs_url=f"{API_V1}/docs",
     redoc_url=None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(api_router, prefix=API_V1)

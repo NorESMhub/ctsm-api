@@ -14,6 +14,7 @@ from app.schemas import (
     CaseSchemaWithTaskInfo,
 )
 from app.tasks import celery_app, create_case_task
+from app.utils.sites import get_site_id
 
 settings = get_settings()
 
@@ -25,7 +26,7 @@ def get_cases(
     db: Session = Depends(get_db),
 ) -> Any:
     """
-    Get all cases
+    Get all cases.
     """
     return crud_case.get_all(db)
 
@@ -36,9 +37,9 @@ def get_case(
     db: Session = Depends(get_db),
 ) -> Any:
     """
-    Get all cases
+    Get the case with the given id.
     """
-    case = crud_case.get(db, case_id)
+    case = crud_case.get(db, id=case_id)
 
     if not case:
         return None
@@ -52,11 +53,12 @@ def get_case(
 
 
 @router.post("/", response_model=CaseSchemaWithTaskInfo)
-def create_case(*, db: Session = Depends(get_db), data: CaseSchemaCreate) -> Any:
-    case_path = crud_case.get_case_path(
-        data.compset, data.res, data.driver, data.data_url
-    )
-    case = crud_case.get(db, case_path)
+def create_case(*, data: CaseSchemaCreate, db: Session = Depends(get_db)) -> Any:
+    """
+    Create a new case with the given parameters.
+    """
+    case_path = get_site_id(data.compset, data.res, data.driver, data.data_url)
+    case = crud_case.get(db, id=case_path)
 
     if case:
         if (CASES_ROOT / case.id).exists():
@@ -89,7 +91,7 @@ def delete_case(
     db: Session = Depends(get_db),
 ) -> Any:
     """
-    Delete a case
+    Delete the case with the given id.
     """
     if (CASES_ROOT / case_id).exists():
         shutil.rmtree((CASES_ROOT / case_id))

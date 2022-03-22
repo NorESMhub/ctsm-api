@@ -11,7 +11,7 @@ ModelType = TypeVar("ModelType", bound=Base)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
-settings = get_settings()  # Import App settings
+settings = get_settings()
 
 
 class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
@@ -27,7 +27,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         self.model = model
 
-    def get(self, db: Session, id: Any) -> Optional[ModelType]:
+    def get(self, db: Session, *, id: Any) -> Optional[ModelType]:
         """Get a database record by id.
 
         Parameters

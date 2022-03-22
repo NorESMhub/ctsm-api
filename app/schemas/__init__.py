@@ -6,6 +6,7 @@ from .cases import (
     CaseSchemaUpdate,
     CaseSchemaWithTaskInfo,
     CaseStatus,
+    CTSMDriver,
 )
 from .sites import SiteSchema
 from .tasks import TaskSchema
