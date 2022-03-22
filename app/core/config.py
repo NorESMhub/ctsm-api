@@ -12,6 +12,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
+ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 API_V1 = "/api/v1"
 
@@ -20,8 +21,9 @@ if SITES_PATH.exists():
 else:
     SITES = []
 
-if not CASES_ROOT.exists():
-    CASES_ROOT.mkdir(parents=True)
+for path in [CASES_ROOT, ARCHIVES_ROOT]:
+    if not path.exists():
+        path.mkdir(parents=True)
 
 
 class Settings(BaseSettings):

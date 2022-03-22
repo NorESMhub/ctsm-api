@@ -14,7 +14,8 @@ from app.schemas import (
     SiteSchema,
 )
 from app.tasks import celery_app
-from app.utils.sites import get_site_by_name, get_site_id
+from app.utils.cases import get_case_id
+from app.utils.sites import get_site_by_name
 
 from .cases import create_case
 
@@ -45,7 +46,7 @@ def get_site_cases(
 
     cases = []
     for driver in drivers or CTSMDriver:
-        case_id = get_site_id(site.compset, site.res, driver, site.url)
+        case_id = get_case_id(site.compset, site.res, driver, site.url)
         case = crud_case.get(db, id=case_id)
         if case:
             task = celery_app.AsyncResult(case.task_id)
