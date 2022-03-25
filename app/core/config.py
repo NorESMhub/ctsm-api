@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Union
 
 from pydantic import AnyHttpUrl, BaseSettings, parse_file_as, validator
 
-from app.schemas import SiteSchema
+from app.schemas import Site
 from app.utils.type_casting import to_bool
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -13,11 +13,19 @@ CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
 ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
+CASE_MUTABLE_VARS_PATH = (
+    PROJECT_ROOT / "resources" / "config" / "case_mutable_vars.json"
+)
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 API_V1 = "/api/v1"
 
+if CASE_MUTABLE_VARS_PATH.exists():
+    CASE_MUTABLE_VARS = parse_file_as(List[str], CASE_MUTABLE_VARS_PATH)
+else:
+    CASE_MUTABLE_VARS = []
+
 if SITES_PATH.exists():
-    SITES = parse_file_as(List[SiteSchema], SITES_PATH)
+    SITES = parse_file_as(List[Site], SITES_PATH)
 else:
     SITES = []
 

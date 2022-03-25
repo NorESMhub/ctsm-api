@@ -18,7 +18,7 @@ class TaskStatus(str, Enum):
     IGNORED = "IGNORED"
 
 
-class TaskSchema(BaseModel):
+class Task(BaseModel):
     task_id: str
     status: TaskStatus
     result: Any

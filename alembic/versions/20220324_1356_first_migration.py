@@ -1,8 +1,8 @@
 """First migration
 
-Revision ID: 85158224d3da
+Revision ID: ef6826c31e5d
 Revises:
-Create Date: 2022-03-15 13:21:26.638989+00:00
+Create Date: 2022-03-24 13:56:00.621411+00:00
 
 """
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "85158224d3da"
+revision = "ef6826c31e5d"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -21,11 +21,11 @@ def upgrade():
     op.create_table(
         "cases",
         sa.Column("id", sa.String(length=32), nullable=False),
-        sa.Column("name", sa.String(length=300), nullable=False),
         sa.Column("compset", sa.String(length=300), nullable=False),
         sa.Column("res", sa.String(length=100), nullable=False),
-        sa.Column("driver", sa.String(length=5), nullable=False),
+        sa.Column("variables", sa.JSON(), nullable=False),
         sa.Column("data_url", sa.String(length=300), nullable=False),
+        sa.Column("driver", sa.String(length=5), nullable=False),
         sa.Column("ctsm_tag", sa.String(length=20), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("date_created", sa.String(length=30), nullable=False),

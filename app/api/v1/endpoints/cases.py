@@ -7,16 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app import schemas
 from app.core.config import ARCHIVES_ROOT, CASES_ROOT, get_settings
 from app.crud import crud_case
 from app.db.session import get_db
-from app.schemas import (
-    CaseSchema,
-    CaseSchemaCreate,
-    CaseSchemaCreateDB,
-    CaseSchemaWithTaskInfo,
-)
-from app.tasks import celery_app, create_case_task
+from app.tasks.cases import create_case_task
 from app.utils.cases import get_case_id
 
 settings = get_settings()
@@ -24,7 +19,7 @@ settings = get_settings()
 router = APIRouter()
 
 
-@router.get("/", response_model=List[CaseSchema])
+@router.get("/", response_model=List[schemas.CaseDB])
 def get_cases(
     db: Session = Depends(get_db),
 ) -> Any:
@@ -34,7 +29,7 @@ def get_cases(
     return crud_case.get_all(db)
 
 
-@router.get("/{case_id}", response_model=CaseSchemaWithTaskInfo)
+@router.get("/{case_id}", response_model=schemas.CaseWithTaskInfo)
 def get_case(
     case_id: str,
     db: Session = Depends(get_db),
@@ -42,45 +37,29 @@ def get_case(
     """
     Get the case with the given id.
     """
-    case = crud_case.get(db, id=case_id)
-
-    if not case:
-        return None
-
-    task = celery_app.AsyncResult(case.task_id)
-    error = task.traceback.strip().split("\n")[-1] if task.traceback else None
-
-    return CaseSchemaWithTaskInfo(
-        case=case, task_id=task.id, status=task.status, result=task.result, error=error
-    )
+    return crud_case.get_case_with_task_info(db, case_id=case_id)
 
 
-@router.post("/", response_model=CaseSchemaWithTaskInfo)
-def create_case(*, data: CaseSchemaCreate, db: Session = Depends(get_db)) -> Any:
+@router.post("/", response_model=schemas.CaseWithTaskInfo)
+def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
     """
     Create a new case with the given parameters.
     """
-    case_path = get_case_id(data.compset, data.res, data.driver, data.data_url)
-    case = crud_case.get(db, id=case_path)
+    obj_in = schemas.CaseCreateDB(**data.dict(), id="", ctsm_tag=settings.CTSM_TAG)
+    case_id = get_case_id(obj_in)
+    case__with_task_info = crud_case.get_case_with_task_info(db, case_id=case_id)
 
-    if case:
-        if (CASES_ROOT / case.id).exists():
-            task = celery_app.AsyncResult(case.task_id)
-        else:
-            task = create_case_task.delay(case)
-    else:
-        obj_in = CaseSchemaCreateDB(
-            **data.dict(), id=case_path, ctsm_tag=settings.CTSM_TAG
-        )
-        case = crud_case.create(db, obj_in=obj_in)
-        task = create_case_task.delay(case)
-        case = crud_case.update(db, db_obj=case, obj_in={"task_id": task.id})
+    if case__with_task_info:
+        return case__with_task_info
 
-    crud_case.update(db, db_obj=case, obj_in={"task_id": task.id})
+    obj_in.id = case_id
+    case = crud_case.create(db, obj_in=obj_in)
+    task = create_case_task.delay(case)
+    case = crud_case.update(db, db_obj=case, obj_in={"task_id": task.id})
     error = task.traceback.strip().split("\n")[-1] if task.traceback else None
 
-    return CaseSchemaWithTaskInfo(
-        case=CaseSchema.from_orm(case),
+    return schemas.CaseWithTaskInfo(
+        case=schemas.CaseDB.from_orm(case),
         task_id=task.id,
         status=task.status,
         result=task.result,

@@ -1,10 +1,10 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
-from .tasks import TaskSchema
+from .tasks import Task
 
 
 class CTSMDriver(str, Enum):
@@ -17,6 +17,7 @@ class CTSMDriver(str, Enum):
 class CaseStatus(str, Enum):
     initialised = "initialised"
     created = "created"
+    updated = "updated"
     setup = "setup"
     built = "built"
     submitted = "submitted"
@@ -24,30 +25,27 @@ class CaseStatus(str, Enum):
     failed = "failed"
 
 
-class CaseSchemaBase(BaseModel):
-    name: str
+class CaseBase(BaseModel):
     compset: str
     res: str
+    variables: Dict[str, Any] = {}
     driver: CTSMDriver = CTSMDriver.mct
     data_url: str
 
     class Config:
         schema_extra = {
             "example": {
-                "name": "ALP1",
                 "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
                 "res": "1x1_ALP1",
+                "variables": {},
                 "driver": "mct",
                 "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",  # noqa: E501
             }
         }
 
 
-class CaseSchemaCreate(CaseSchemaBase):
-    pass
-
-
-class CaseSchemaDBBase(CaseSchemaBase):
+class CaseDB(CaseBase):
+    id: str
     ctsm_tag: str
     status: CaseStatus = CaseStatus.initialised
     date_created: datetime = datetime.now()
@@ -57,17 +55,13 @@ class CaseSchemaDBBase(CaseSchemaBase):
         orm_mode = True
 
 
-class CaseSchema(CaseSchemaDBBase):
-    id: str
-
-
-class CaseSchemaCreateDB(CaseSchema):
+class CaseCreateDB(CaseDB):
     pass
 
 
-class CaseSchemaUpdate(CaseSchema):
+class CaseUpdate(CaseDB):
     pass
 
 
-class CaseSchemaWithTaskInfo(TaskSchema):
-    case: CaseSchema
+class CaseWithTaskInfo(Task):
+    case: CaseDB

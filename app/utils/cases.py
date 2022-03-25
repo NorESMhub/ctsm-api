@@ -1,16 +1,26 @@
 import hashlib
+import json
 
 from app.core.config import get_settings
+from app.schemas import CaseDB
 
 settings = get_settings()
 
 
-def get_case_id(compset: str, res: str, driver: str, data_url: str) -> str:
+def get_case_id(case: CaseDB) -> str:
     """
-    Case id is a hash of the compset, res, driver, and data_url.
+    Case id is a hash of the compset, res, variables, data_url, driver, and ctsm_tag.
     This value is also used as the case path under `resources/cases/`.
     """
-    case_path = bytes(
-        f"{compset}_{res}_{driver}_{data_url}_{settings.CTSM_TAG}".encode("utf-8")
+    hash_parts = "_".join(
+        [
+            case.compset,
+            case.res,
+            json.dumps(sorted(case.variables.items())),
+            case.data_url,
+            case.driver,
+            case.ctsm_tag,
+        ]
     )
-    return hashlib.md5(case_path).hexdigest()
+    case_id = bytes(hash_parts.encode("utf-8"))
+    return hashlib.md5(case_id).hexdigest()

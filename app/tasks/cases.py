@@ -1,13 +1,22 @@
 import io
+import json
 import os
 import shutil
 import subprocess
 import tarfile
 import time
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 import requests
 
-from app.core.config import CASES_ROOT, CTSM_ROOT, DATA_ROOT, get_settings
+from app.core.config import (
+    CASE_MUTABLE_VARS,
+    CASES_ROOT,
+    CTSM_ROOT,
+    DATA_ROOT,
+    get_settings,
+)
 from app.crud import crud_case
 from app.db.session import SessionLocal
 from app.models import CaseModel
@@ -23,7 +32,9 @@ settings = get_settings()
 def create_case_task(case: CaseModel) -> str:
     case_path = CASES_ROOT / case.id
     input_data_path = DATA_ROOT / case.id
-    os.environ["CESMDATAROOT"] = str(input_data_path)
+    env = {
+        "CESMDATAROOT": str(input_data_path),
+    }
 
     if not input_data_path.exists():
         response = requests.get(case.data_url, stream=True)
@@ -32,16 +43,16 @@ def create_case_task(case: CaseModel) -> str:
 
     logger.info(
         f"Creating case {case.id} with the following attributes:\n"
-        f"Name: {case.name}\n"
         f"Path: {case_path}\n"
         f"Compset: {case.compset}\n"
         f"Res: {case.res}\n"
+        f"Variables: {json.dumps(case.variables, indent=2)}\n"
         f"Driver: {case.driver}\n"
     )
 
     shutil.rmtree(case_path, ignore_errors=True)
 
-    for cmd, cwd, status in (
+    cmds: List[Tuple[List[str], Optional[Path], CaseStatus]] = [
         (
             [
                 str(CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
@@ -61,15 +72,37 @@ def create_case_task(case: CaseModel) -> str:
             ],
             None,
             CaseStatus.created,
-        ),
-        (["./case.setup"], case_path, CaseStatus.setup),
-        (["./case.build"], case_path, CaseStatus.built),
-        (["./case.submit"], case_path, CaseStatus.submitted),
-    ):
+        )
+    ]
+    if case.variables:
+        xml_change_cmd = [
+            "./xmlchange",
+        ]
+        for key, variables in case.variables.items():
+            if key not in CASE_MUTABLE_VARS:
+                logger.warn(f"Variable {key} is not mutable")
+                continue
+            xml_change_cmd.append(f"{key}={variables}")
+
+        cmds.append(
+            (xml_change_cmd, case_path, CaseStatus.updated),
+        )
+
+    cmds.extend(
+        [
+            (["./case.setup"], case_path, CaseStatus.setup),
+            (["./case.build"], case_path, CaseStatus.built),
+            (["./case.submit"], case_path, CaseStatus.submitted),
+        ]
+    )
+
+    for cmd, cwd, status in cmds:
         logger.info(f"Running {' '.join(cmd)}")
         start = time.time()
 
-        proc = subprocess.run(cmd, cwd=cwd, capture_output=True, check=False)
+        proc = subprocess.run(
+            cmd, cwd=cwd, capture_output=True, env={**os.environ, **env}
+        )
 
         logger.info(f"Finished {cmd[0]} in {time.time() - start} seconds")
 
