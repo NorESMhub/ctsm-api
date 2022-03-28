@@ -73,10 +73,8 @@ WORKDIR /ctsm-api
 
 RUN poetry install
 
-COPY docker/entrypoint.sh /ctsm-api/docker/entrypoint.sh
+COPY docker/entrypoint* /ctsm-api/docker/
 
-RUN chmod +x /ctsm-api/docker/entrypoint.sh
+RUN chmod +x /ctsm-api/docker/entrypoint*
 
 EXPOSE 8000
-
-CMD ["/ctsm-api/docker/entrypoint.sh"]

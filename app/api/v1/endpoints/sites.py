@@ -61,8 +61,7 @@ def create_site_case(
         case_id=case_task.case.id,
     )
     site_cases = crud_site.get_site_cases(db=db, site_name=site_name)
-    print("HIII", site_cases)
-    site_case = next(c for c in site_cases if c.case.id == case_task.case.id)
+    site_case = next((c for c in site_cases if c.case.id == case_task.case.id), None)
     if not site_case:
         crud_site.create(db=db, obj_in=obj_in)
     return case_task

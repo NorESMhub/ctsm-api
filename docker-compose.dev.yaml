@@ -11,6 +11,16 @@ services:
     environment:
       - DEBUG=1
 
+  tasks:
+    extends:
+      file: docker-compose.yaml
+      service: tasks
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile
+    environment:
+      - DEBUG=1
+
   rabbitmq:
     extends:
       file: docker-compose.yaml
