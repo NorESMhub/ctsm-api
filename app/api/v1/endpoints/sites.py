@@ -3,11 +3,9 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app import schemas
-from app.core.config import SITES
-from app.crud import crud_site
+from app import crud, schemas
 from app.db.session import get_db
-from app.utils.sites import get_site_by_name
+from app.utils.sites import get_all_sites, get_site_by_name
 
 from .cases import create_case
 
@@ -19,7 +17,7 @@ def get_sites() -> Any:
     """
     Get all sites.
     """
-    return SITES
+    return get_all_sites()
 
 
 @router.get("/{site_name}/cases", response_model=List[schemas.CaseWithTaskInfo])
@@ -31,7 +29,7 @@ def get_site_cases(
     Get all the cases for a site and given drivers.
     By default, all drivers are returned.
     """
-    return crud_site.get_site_cases(db=db, site_name=site_name)
+    return crud.site.get_site_cases(db=db, site_name=site_name)
 
 
 @router.post("/{site_name}", response_model=schemas.CaseWithTaskInfo)
@@ -60,8 +58,8 @@ def create_site_case(
         name=site_name,
         case_id=case_task.case.id,
     )
-    site_cases = crud_site.get_site_cases(db=db, site_name=site_name)
+    site_cases = crud.site.get_site_cases(db=db, site_name=site_name)
     site_case = next((c for c in site_cases if c.case.id == case_task.case.id), None)
     if not site_case:
-        crud_site.create(db=db, obj_in=obj_in)
+        crud.site.create(db=db, obj_in=obj_in)
     return case_task

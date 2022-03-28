@@ -3,9 +3,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
-from pydantic import AnyHttpUrl, BaseSettings, parse_file_as, validator
+from pydantic import AnyHttpUrl, BaseSettings, Field, parse_file_as, validator
 
-from app.schemas import Site
 from app.utils.type_casting import to_bool
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -17,17 +16,7 @@ CASE_MUTABLE_VARS_PATH = (
     PROJECT_ROOT / "resources" / "config" / "case_mutable_vars.json"
 )
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
-API_V1 = "/api/v1"
 
-if CASE_MUTABLE_VARS_PATH.exists():
-    CASE_MUTABLE_VARS = parse_file_as(List[str], CASE_MUTABLE_VARS_PATH)
-else:
-    CASE_MUTABLE_VARS = []
-
-if SITES_PATH.exists():
-    SITES = parse_file_as(List[Site], SITES_PATH)
-else:
-    SITES = []
 
 for path in [CASES_ROOT, ARCHIVES_ROOT]:
     if not path.exists():
@@ -35,7 +24,10 @@ for path in [CASES_ROOT, ARCHIVES_ROOT]:
 
 
 class Settings(BaseSettings):
+    # API settings
     DEBUG: bool = False
+
+    API_V1: str = Field("/api/v1", const=True)
 
     BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
 
@@ -47,10 +39,7 @@ class Settings(BaseSettings):
             return v
         raise ValueError(v)
 
-    CTSM_TAG: str
-    CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
-    MACHINE_NAME: str = "container"
-
+    # Database settings
     SQLITE_DB_TEST: str = "cases_test.sqlite"
     SQLITE_DB: str = "cases.sqlite"
 
@@ -64,8 +53,27 @@ class Settings(BaseSettings):
 
     SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{SQLITE_DB}"
 
+    # Tasks settings
     CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
     CELERY_RESULT_BACKEND: str = f"db+{SQLALCHEMY_DATABASE_URI}"
+
+    # Paths
+    CTSM_ROOT: Path = Field(CTSM_ROOT, const=True)
+    CASES_ROOT: Path = Field(CASES_ROOT, const=True)
+    DATA_ROOT: Path = Field(DATA_ROOT, const=True)
+    ARCHIVES_ROOT: Path = Field(ARCHIVES_ROOT, const=True)
+    SITES_PATH: Path = Field(SITES_PATH, const=True)
+
+    # CTSM settings
+    CTSM_TAG: str
+    CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
+    MACHINE_NAME: str = "container"
+    CASE_MUTABLE_VARS = Field(
+        parse_file_as(List[str], CASE_MUTABLE_VARS_PATH)
+        if CASE_MUTABLE_VARS_PATH.exists()
+        else [],
+        const=True,
+    )
 
     class Config:
         env_file = PROJECT_ROOT / ".env"

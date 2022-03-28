@@ -2,12 +2,8 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app import models, schemas
-from app.core.config import get_settings
+from app import models, schemas, tasks
 from app.crud.base import CRUDBase
-from app.tasks import celery_app
-
-settings = get_settings()
 
 
 class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpdate]):
@@ -20,7 +16,7 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
             return None
 
         if case.task_id:
-            task = celery_app.AsyncResult(case.task_id)
+            task = tasks.celery_app.AsyncResult(case.task_id)
             task_dict = {
                 "task_id": task.id,
                 "status": task.status,
@@ -32,4 +28,4 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
         return schemas.CaseWithTaskInfo(**task_dict, case=case)
 
 
-crud_case = CRUDCase(models.CaseModel)
+case = CRUDCase(models.CaseModel)

@@ -1,2 +1,2 @@
-from .cases import crud_case
-from .sites import crud_site
+from .cases import case
+from .sites import site

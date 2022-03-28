@@ -1,8 +1,6 @@
 import logging
 
-from app.core.config import get_settings
-
-settings = get_settings()
+from app.core import settings
 
 FORMAT = "[%(levelname)s] %(asctime)s %(message)s"
 logging.basicConfig(

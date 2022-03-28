@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.api import api_router
-from app.core.config import API_V1, get_settings
+from app.core import settings
 from app.utils.dependencies import check_dependencies
 from app.utils.logger import logger
 
@@ -12,12 +12,10 @@ except Exception as e:
     logger.error(e)
     exit(1)
 
-settings = get_settings()
-
 app = FastAPI(
     title="CTSM API",
-    openapi_url=f"{API_V1}/openapi.json",
-    docs_url=f"{API_V1}/docs",
+    openapi_url=f"{settings.API_V1}/openapi.json",
+    docs_url=f"{settings.API_V1}/docs",
     redoc_url=None,
 )
 
@@ -29,4 +27,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(api_router, prefix=API_V1)
+app.include_router(api_router, prefix=settings.API_V1)

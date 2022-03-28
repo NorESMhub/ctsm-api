@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas
 from app.crud.base import CRUDBase
 
-from .cases import crud_case
+from .cases import case
 
 
 class CRUDSite(
@@ -17,7 +17,7 @@ class CRUDSite(
         site_cases = db.query(self.model).filter_by(name=site_name)
         site_cases_with_task_info = []
         for site_case in site_cases:
-            site_case_with_task_info = crud_case.get_case_with_task_info(
+            site_case_with_task_info = case.get_case_with_task_info(
                 db, case_id=site_case.case_id
             )
             if site_case_with_task_info:
@@ -25,4 +25,4 @@ class CRUDSite(
         return site_cases_with_task_info
 
 
-crud_site = CRUDSite(models.SiteCaseModel)
+site = CRUDSite(models.SiteCaseModel)

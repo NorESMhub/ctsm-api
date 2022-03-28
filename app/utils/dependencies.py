@@ -1,10 +1,8 @@
 import subprocess
 from typing import List
 
-from app.core.config import CTSM_ROOT, get_settings
+from app.core import settings
 from app.utils.logger import logger
-
-settings = get_settings()
 
 
 def check_git(errors: List[str]) -> None:
@@ -23,11 +21,13 @@ def check_ctsm(errors: List[str]) -> None:
     """
     Check if the correct version of CTSM is available in `resources/ctsm`.
     """
-    if not CTSM_ROOT.exists():
+    if not settings.CTSM_ROOT.exists():
         errors.append("CTSM is not setup. Run `setup_ctsm` first.")
         return
 
-    proc = subprocess.run(["git", "describe"], cwd=CTSM_ROOT, capture_output=True)
+    proc = subprocess.run(
+        ["git", "describe"], cwd=settings.CTSM_ROOT, capture_output=True
+    )
     if proc.returncode != 0 or proc.stdout.strip().decode("utf8") != settings.CTSM_TAG:
         errors.append("CTSM is not setup correctly. Run `setup_ctsm` first.")
 
@@ -54,7 +54,9 @@ def checkout_externals() -> None:
     Checkout CTSM externals.
     """
     proc = subprocess.run(
-        ["manage_externals/checkout_externals"], cwd=CTSM_ROOT, capture_output=True
+        ["manage_externals/checkout_externals"],
+        cwd=settings.CTSM_ROOT,
+        capture_output=True,
     )
     if proc.returncode != 0:
         logger.error(f"Could not checkout externals: {proc.stderr.decode('utf-8')}.")
@@ -65,8 +67,10 @@ def setup_ctsm() -> None:
     TODO: add better checkout and cleanup process.
     Clone CTSM with and switch to the correct tag as specified in the settings.
     """
-    if CTSM_ROOT.exists():
-        proc = subprocess.run(["git", "describe"], cwd=CTSM_ROOT, capture_output=True)
+    if settings.CTSM_ROOT.exists():
+        proc = subprocess.run(
+            ["git", "describe"], cwd=settings.CTSM_ROOT, capture_output=True
+        )
         if (
             proc.returncode == 0
             and proc.stdout.strip().decode("utf8") == settings.CTSM_TAG
@@ -75,7 +79,7 @@ def setup_ctsm() -> None:
             return
 
         proc = subprocess.run(
-            ["git", "fetch", "--all"], cwd=CTSM_ROOT, capture_output=True
+            ["git", "fetch", "--all"], cwd=settings.CTSM_ROOT, capture_output=True
         )
         if proc.returncode != 0:
             logger.warning(
@@ -84,7 +88,9 @@ def setup_ctsm() -> None:
             )
 
         proc = subprocess.run(
-            ["git", "checkout", settings.CTSM_TAG], cwd=CTSM_ROOT, capture_output=True
+            ["git", "checkout", settings.CTSM_TAG],
+            cwd=settings.CTSM_ROOT,
+            capture_output=True,
         )
         if proc.returncode != 0:
             logger.error(f"Could not checkout CTSM {settings.CTSM_TAG}.")

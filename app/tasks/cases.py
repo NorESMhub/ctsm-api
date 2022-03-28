@@ -10,28 +10,19 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from app.core.config import (
-    CASE_MUTABLE_VARS,
-    CASES_ROOT,
-    CTSM_ROOT,
-    DATA_ROOT,
-    get_settings,
-)
-from app.crud import crud_case
+from app import crud, models, schemas
+from app.core import settings
 from app.db.session import SessionLocal
-from app.models import CaseModel
-from app.schemas import CaseStatus
+from app.utils.cases import get_case_data_path
 from app.utils.logger import logger
 
 from .celery_app import celery_app
 
-settings = get_settings()
-
 
 @celery_app.task
-def create_case_task(case: CaseModel) -> str:
-    case_path = CASES_ROOT / case.id
-    input_data_path = DATA_ROOT / case.id
+def create_case_task(case: models.CaseModel) -> str:
+    case_path = settings.CASES_ROOT / case.id
+    input_data_path = get_case_data_path(case.data_url)
     env = {
         "CESMDATAROOT": str(input_data_path),
     }
@@ -52,10 +43,10 @@ def create_case_task(case: CaseModel) -> str:
 
     shutil.rmtree(case_path, ignore_errors=True)
 
-    cmds: List[Tuple[List[str], Optional[Path], CaseStatus]] = [
+    cmds: List[Tuple[List[str], Optional[Path], schemas.CaseStatus]] = [
         (
             [
-                str(CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
+                str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
                 "--case",
                 str(case_path),
                 "--compset",
@@ -71,28 +62,30 @@ def create_case_task(case: CaseModel) -> str:
                 "r",
             ],
             None,
-            CaseStatus.created,
+            schemas.CaseStatus.CREATED,
         )
     ]
     if case.variables:
-        xml_change_cmd = [
-            "./xmlchange",
-        ]
+        xml_change_flags = []
         for key, variables in case.variables.items():
-            if key not in CASE_MUTABLE_VARS:
-                logger.warn(f"Variable {key} is not mutable")
+            if key not in settings.CASE_MUTABLE_VARS:
+                logger.warn(f"Variable {key} is not allowed")
                 continue
-            xml_change_cmd.append(f"{key}={variables}")
+            xml_change_flags.append(f"{key}={variables}")
 
         cmds.append(
-            (xml_change_cmd, case_path, CaseStatus.updated),
+            (
+                ["./xmlchange", ",".join(xml_change_flags)],
+                case_path,
+                schemas.CaseStatus.UPDATED,
+            ),
         )
 
     cmds.extend(
         [
-            (["./case.setup"], case_path, CaseStatus.setup),
-            (["./case.build"], case_path, CaseStatus.built),
-            (["./case.submit"], case_path, CaseStatus.submitted),
+            (["./case.setup"], case_path, schemas.CaseStatus.SETUP),
+            (["./case.build"], case_path, schemas.CaseStatus.BUILT),
+            (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
         ]
     )
 
@@ -110,7 +103,7 @@ def create_case_task(case: CaseModel) -> str:
             raise Exception(proc.stderr.decode("utf-8").strip())
 
         with SessionLocal() as db:
-            crud_case.update(
+            crud.case.update(
                 db,
                 db_obj=case,
                 obj_in={"status": status},
