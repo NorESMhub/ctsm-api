@@ -5,6 +5,8 @@ services:
     image: ghcr.io/ka7eh/ctsm-api:${VERSION:-latest}
     restart: unless-stopped
     entrypoint: /ctsm-api/docker/entrypoint_api.sh
+    env_file:
+      - .env
     environment:
       - HOST_USER=${HOST_USER}
       - HOST_UID=${HOST_UID}
@@ -21,6 +23,8 @@ services:
     image: ghcr.io/ka7eh/ctsm-api:${VERSION:-latest}
     restart: unless-stopped
     entrypoint: /ctsm-api/docker/entrypoint_tasks.sh
+    env_file:
+      - .env
     environment:
       - HOST_USER=${HOST_USER}
       - HOST_UID=${HOST_UID}
@@ -34,11 +38,11 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     restart: unless-stopped
-    networks:
-      - default
     environment:
       - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER:-admin}
       - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS:-admin}
+    networks:
+      - default
 
 networks:
   default:

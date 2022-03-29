@@ -6,7 +6,7 @@ USER=root
 HOME=/root
 
 if [[ $HOST_USER && $HOST_UID ]]; then
-  id -u "$HOST_USER" &>/dev/null || adduser --disabled-password --uid "$HOST_UID" "$HOST_USER"
+  id -u "$HOST_USER" &>/dev/null || adduser --quiet --disabled-password --gecos "" --uid "$HOST_UID" "$HOST_USER"
   chown -R "$HOST_USER":"$HOST_USER" /ctsm-api/resources
   USER="$HOST_USER"
 
