@@ -8,7 +8,7 @@ sudo -s -E -u "$USER" bash <<EOF
 
 cd /ctsm-api
 
-if [[ $DEBUG && $DEBUG == 1 ]]; then
+if [[ ${DEBUG:-0} == 1 ]]; then
   watchmedo auto-restart --directory=./app --pattern="*.py" --recursive -- celery -A app.tasks worker -E --loglevel DEBUG
 else
   celery -A app.tasks worker -E --loglevel INFO

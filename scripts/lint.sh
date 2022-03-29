@@ -2,6 +2,8 @@
 
 set -x
 
+FIX=0
+
 while test $# -gt 0; do
     case "$1" in
     -f | --fix)
