@@ -1,14 +1,14 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel
 
 
-class Site(BaseModel):
+class SiteProperties(BaseModel):
     name: str
+    description: Optional[str]
     compset: str
     res: str
-    lat: float
-    lon: float
     url: str
 
 

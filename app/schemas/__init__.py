@@ -7,5 +7,6 @@ from .cases import (
     CaseWithTaskInfo,
     CTSMDriver,
 )
-from .sites import Site, SiteCaseDB, SiteCaseDBCreate, SiteCaseDBUpdate
+from .geojson import Feature, FeatureCollection, Point
+from .sites import SiteCaseDB, SiteCaseDBCreate, SiteCaseDBUpdate, SiteProperties
 from .tasks import Task, TaskStatus

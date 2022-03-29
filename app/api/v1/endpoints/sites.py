@@ -12,7 +12,7 @@ from .cases import create_case
 router = APIRouter()
 
 
-@router.get("/", response_model=List[schemas.Site])
+@router.get("/", response_model=schemas.FeatureCollection[schemas.SiteProperties])
 def get_sites() -> Any:
     """
     Get all sites.
