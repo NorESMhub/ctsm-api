@@ -20,6 +20,7 @@ export MPIF77=mpif77
 
 EOF
 
+export USER=$USER
 export HOME=/home/$USER
 export CIME_MACHINE=container
 export MPICC=mpicc
@@ -27,6 +28,6 @@ export MPIFC=mpif90
 export MPIF90=mpif90
 export MPIF77=mpif77
 
-ln -s /ctsm-api/resources/dotcime /home/$USER/.cime
+ln -fs /ctsm-api/resources/dotcime /home/$USER/.cime
 
 fi

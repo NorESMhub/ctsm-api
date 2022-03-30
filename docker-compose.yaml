@@ -17,7 +17,7 @@ services:
     ports:
       - ${PORT:-8000}:8000
     volumes:
-      - .:/ctsm-api
+      - ./resources:/ctsm-api/resources
 
   tasks:
     image: ghcr.io/ka7eh/ctsm-api:${VERSION:-latest}
@@ -33,7 +33,7 @@ services:
     networks:
       - default
     volumes:
-      - .:/ctsm-api
+      - ./resources:/ctsm-api/resources
 
   rabbitmq:
     image: rabbitmq:3-management

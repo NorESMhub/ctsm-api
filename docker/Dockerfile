@@ -66,15 +66,16 @@ RUN pip install --upgrade pip setuptools
 RUN pip install poetry
 RUN poetry config virtualenvs.create false
 
-COPY ./pyproject.toml /ctsm-api/pyproject.toml
-COPY ./poetry.lock /ctsm-api/poetry.lock
-
 WORKDIR /ctsm-api
 
-RUN poetry install
-
+COPY alembic /ctsm-api/alembic
+COPY app /ctsm-api/app
 COPY docker/entrypoint* /ctsm-api/docker/
+COPY scripts /ctsm-api/scripts
+COPY alembic.ini mypy.ini pyproject.toml poetry.lock /ctsm-api/
 
 RUN chmod +x /ctsm-api/docker/entrypoint*
+
+RUN poetry install
 
 EXPOSE 8000

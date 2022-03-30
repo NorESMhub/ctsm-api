@@ -40,22 +40,21 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     # Database settings
-    SQLITE_DB_TEST: str = "cases_test.sqlite"
-    SQLITE_DB: str = "cases.sqlite"
+    SQLALCHEMY_DATABASE_URI: str = (
+        f"sqlite:///{PROJECT_ROOT / 'resources'}/cases.sqlite"
+    )
 
-    @validator("SQLITE_DB", pre=True)
-    def get_db_name(cls, v: str, values: Dict[str, Any]) -> Any:
+    @validator("SQLALCHEMY_DATABASE_URI", pre=True)
+    def get_db_uri(cls, v: str, values: Dict[str, Any]) -> Any:
         return (
-            values["SQLITE_DB_TEST"]
+            f"sqlite:///{PROJECT_ROOT / 'resources'}/cases_test.sqlite"
             if to_bool(os.environ.get("PYTHON_TEST", False))
             else v
         )
 
-    SQLALCHEMY_DATABASE_URI: str = f"sqlite:///{SQLITE_DB}"
-
     # Tasks settings
     CELERY_BROKER_URL: str = "amqp://guest:guest@localhost:5672//"
-    CELERY_RESULT_BACKEND: str = f"db+{SQLALCHEMY_DATABASE_URI}"
+    CELERY_RESULT_BACKEND: str = f"db+{str(SQLALCHEMY_DATABASE_URI)}"
 
     # Paths
     CTSM_ROOT: Path = Field(CTSM_ROOT, const=True)
