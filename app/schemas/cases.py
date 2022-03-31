@@ -50,7 +50,7 @@ class CaseBase(BaseModel):
     def validate_variables(cls, variables: Dict[str, Any]) -> Dict[str, Any]:
         filtered_variables = {}
         for key, variables in variables.items():
-            if key in settings.CASE_MUTABLE_VARS:
+            if key in settings.CASE_ALLOWED_VARS:
                 filtered_variables[key] = variables
             else:
                 logger.warn(f"Variable {key} is not allowed")
@@ -77,5 +77,5 @@ class CaseUpdate(CaseDB):
     pass
 
 
-class CaseWithTaskInfo(Task):
-    case: CaseDB
+class CaseWithTaskInfo(CaseDB):
+    task: Task

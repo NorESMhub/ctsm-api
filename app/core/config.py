@@ -12,8 +12,8 @@ CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
 ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
-CASE_MUTABLE_VARS_PATH = (
-    PROJECT_ROOT / "resources" / "config" / "case_mutable_vars.json"
+CASE_ALLOWED_VARS_PATH = (
+    PROJECT_ROOT / "resources" / "config" / "case_allowed_vars.json"
 )
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 
@@ -67,9 +67,9 @@ class Settings(BaseSettings):
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
     MACHINE_NAME: str = "container"
-    CASE_MUTABLE_VARS = Field(
-        parse_file_as(List[str], CASE_MUTABLE_VARS_PATH)
-        if CASE_MUTABLE_VARS_PATH.exists()
+    CASE_ALLOWED_VARS = Field(
+        parse_file_as(List[str], CASE_ALLOWED_VARS_PATH)
+        if CASE_ALLOWED_VARS_PATH.exists()
         else [],
         const=True,
     )

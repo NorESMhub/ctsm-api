@@ -1,7 +1,9 @@
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
+
+from .cases import CTSMDriver
 
 
 class SiteProperties(BaseModel):
@@ -10,6 +12,21 @@ class SiteProperties(BaseModel):
     compset: str
     res: str
     url: str
+
+
+class SiteCaseCreate(BaseModel):
+    site_name: str
+    variables: Dict[str, Any] = {}
+    driver: CTSMDriver = CTSMDriver.mct
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "site_name": "ALP1",
+                "variables": {"STOP_OPTION": "nmonths", "STOP_N": 3},
+                "driver": CTSMDriver.mct,
+            }
+        }
 
 
 class SiteCaseDBBase(BaseModel):

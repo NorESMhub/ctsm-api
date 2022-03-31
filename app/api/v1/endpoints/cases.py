@@ -16,6 +16,15 @@ from app.utils.cases import get_case_id
 router = APIRouter()
 
 
+# This must come before /{case_id} otherwise it will be handled by get_case.
+@router.get("/allowed_vars", response_model=List[str])
+def get_case_allowed_vars() -> Any:
+    """
+    Get the list of CTSM allowed variables that can be changed with xmlchange.
+    """
+    return settings.CASE_ALLOWED_VARS
+
+
 @router.get("/", response_model=List[schemas.CaseDB])
 def get_cases(
     db: Session = Depends(get_db),
@@ -59,11 +68,13 @@ def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
     error = task.traceback.strip().split("\n")[-1] if task.traceback else None
 
     return schemas.CaseWithTaskInfo(
-        case=schemas.CaseDB.from_orm(case),
-        task_id=task.id,
-        status=task.status,
-        result=task.result,
-        error=error,
+        **schemas.CaseDB.from_orm(case).dict(),
+        task={
+            "task_id": task.id,
+            "status": task.status,
+            "result": task.result,
+            "error": error,
+        },
     )
 
 

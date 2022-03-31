@@ -68,7 +68,7 @@ def create_case_task(case: models.CaseModel) -> str:
     if case.variables:
         xml_change_flags = []
         for key, variables in case.variables.items():
-            if key not in settings.CASE_MUTABLE_VARS:
+            if key not in settings.CASE_ALLOWED_VARS:
                 logger.warn(f"Variable {key} is not allowed")
                 continue
             xml_change_flags.append(f"{key}={variables}")

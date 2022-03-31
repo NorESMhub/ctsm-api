@@ -25,7 +25,9 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
                 if task.traceback
                 else None,
             }
-        return schemas.CaseWithTaskInfo(**task_dict, case=case)
+        return schemas.CaseWithTaskInfo(
+            **schemas.CaseDB.from_orm(case).dict(), task=task_dict
+        )
 
 
 case = CRUDCase(models.CaseModel)
