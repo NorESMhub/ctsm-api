@@ -1,15 +1,43 @@
-from typing import Any, List
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import parse_file_as
 from sqlalchemy.orm import Session
 
 from app import crud, schemas
+from app.core import settings
 from app.db.session import get_db
-from app.utils.sites import get_all_sites, get_site_by_name
 
 from .cases import create_case
 
 router = APIRouter()
+
+
+def get_all_sites() -> schemas.FeatureCollection[schemas.SiteProperties]:
+    return (
+        parse_file_as(
+            schemas.FeatureCollection[schemas.SiteProperties], settings.SITES_PATH
+        )
+        if settings.SITES_PATH.exists()
+        else schemas.FeatureCollection[schemas.SiteProperties](features=[])
+    )
+
+
+def get_site_by_name(site_name: str) -> Optional[schemas.SiteProperties]:
+    """
+    Return the site info for a given site name from `resources/config/sites.json`.
+    """
+    sites = get_all_sites()
+    features = sites.features if sites else []
+    site = next(
+        filter(lambda f: f.properties and f.properties.name == site_name, features),
+        None,
+    )
+
+    if site:
+        return site.properties
+
+    return None
 
 
 @router.get("/", response_model=schemas.FeatureCollection[schemas.SiteProperties])
@@ -45,8 +73,8 @@ def create_site_case(
         case_id=case_task.id,
     )
     site_cases = crud.site.get_site_cases(db=db, site_name=site_case.site_name)
-    site_case = next((c for c in site_cases if c.id == case_task.id), None)
-    if not site_case:
+    existing_site_case = next((c for c in site_cases if c.id == case_task.id), None)
+    if not existing_site_case:
         crud.site.create(db=db, obj_in=obj_in)
     return case_task
 

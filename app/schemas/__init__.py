@@ -1,4 +1,5 @@
 from .cases import (
+    CaseAllowedVariable,
     CaseBase,
     CaseCreateDB,
     CaseDB,
@@ -6,6 +7,7 @@ from .cases import (
     CaseUpdate,
     CaseWithTaskInfo,
     CTSMDriver,
+    get_case_allowed_variables,
 )
 from .geojson import Feature, FeatureCollection, Point
 from .sites import (

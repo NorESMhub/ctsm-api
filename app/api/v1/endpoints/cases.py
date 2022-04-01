@@ -1,3 +1,5 @@
+import hashlib
+import json
 import os
 import shutil
 import tarfile
@@ -11,18 +13,36 @@ from app import crud, schemas
 from app.core import settings
 from app.db.session import get_db
 from app.tasks.cases import create_case_task
-from app.utils.cases import get_case_id
 
 router = APIRouter()
 
 
+def get_case_id(case: schemas.CaseDB) -> str:
+    """
+    Case id is a hash of the compset, res, variables, data_url, driver, and ctsm_tag.
+    This value is also used as the case path under `resources/cases/`.
+    """
+    hash_parts = "_".join(
+        [
+            case.compset,
+            case.res,
+            json.dumps(sorted(case.variables.items())),
+            case.data_url,
+            case.driver,
+            case.ctsm_tag,
+        ]
+    )
+    case_id = bytes(hash_parts.encode("utf-8"))
+    return hashlib.md5(case_id).hexdigest()
+
+
 # This must come before /{case_id} otherwise it will be handled by get_case.
-@router.get("/allowed_vars", response_model=List[str])
+@router.get("/allowed_vars", response_model=List[schemas.CaseAllowedVariable])
 def get_case_allowed_vars() -> Any:
     """
     Get the list of CTSM allowed variables that can be changed with xmlchange.
     """
-    return settings.CASE_ALLOWED_VARS
+    return schemas.get_case_allowed_variables()
 
 
 @router.get("/", response_model=List[schemas.CaseDB])

@@ -1,3 +1,4 @@
+import hashlib
 import io
 import json
 import os
@@ -13,10 +14,13 @@ import requests
 from app import crud, models, schemas
 from app.core import settings
 from app.db.session import SessionLocal
-from app.utils.cases import get_case_data_path
 from app.utils.logger import logger
 
 from .celery_app import celery_app
+
+
+def get_case_data_path(data_url: str) -> Path:
+    return settings.DATA_ROOT / hashlib.md5(bytes(data_url.encode("utf-8"))).hexdigest()
 
 
 @celery_app.task
@@ -66,11 +70,9 @@ def create_case_task(case: models.CaseModel) -> str:
         )
     ]
     if case.variables:
+        validated_variables = schemas.CaseBase.validate_variables(case.variables)
         xml_change_flags = []
-        for key, variables in case.variables.items():
-            if key not in settings.CASE_ALLOWED_VARS:
-                logger.warn(f"Variable {key} is not allowed")
-                continue
+        for key, variables in validated_variables.items():
             xml_change_flags.append(f"{key}={variables}")
 
         cmds.append(

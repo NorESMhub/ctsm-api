@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
-from pydantic import AnyHttpUrl, BaseSettings, Field, parse_file_as, validator
+from pydantic import AnyHttpUrl, BaseSettings, Field, validator
 
 from app.utils.type_casting import to_bool
 
@@ -62,17 +62,12 @@ class Settings(BaseSettings):
     DATA_ROOT: Path = Field(DATA_ROOT, const=True)
     ARCHIVES_ROOT: Path = Field(ARCHIVES_ROOT, const=True)
     SITES_PATH: Path = Field(SITES_PATH, const=True)
+    CASE_ALLOWED_VARS_PATH: Path = Field(CASE_ALLOWED_VARS_PATH, const=True)
 
     # CTSM settings
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
     MACHINE_NAME: str = "container"
-    CASE_ALLOWED_VARS = Field(
-        parse_file_as(List[str], CASE_ALLOWED_VARS_PATH)
-        if CASE_ALLOWED_VARS_PATH.exists()
-        else [],
-        const=True,
-    )
 
     class Config:
         env_file = PROJECT_ROOT / ".env"
