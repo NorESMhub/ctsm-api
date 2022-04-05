@@ -131,8 +131,9 @@ class CaseAllowedVariable(BaseModel):
     # which is char in yyyy-mm-dd format in CTSM.
     type: CTSMVarType
     choices: Optional[List[Union[str, int]]] = None
+    allow_multiple: bool = False
     description: Optional[str] = None
-    default: Optional[Union[str, int, bool]] = None
+    default: Optional[Union[str, int, bool, List[Union[str, int, bool]]]] = None
 
 
 def get_case_allowed_variables() -> List[CaseAllowedVariable]:
