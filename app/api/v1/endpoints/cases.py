@@ -1,7 +1,3 @@
-import hashlib
-import json
-import os
-import shutil
 import tarfile
 from typing import Any, List
 
@@ -12,28 +8,8 @@ from sqlalchemy.orm import Session
 from app import crud, schemas
 from app.core import settings
 from app.db.session import get_db
-from app.tasks.cases import create_case_task
 
 router = APIRouter()
-
-
-def get_case_id(case: schemas.CaseDB) -> str:
-    """
-    Case id is a hash of the compset, res, variables, data_url, driver, and ctsm_tag.
-    This value is also used as the case path under `resources/cases/`.
-    """
-    hash_parts = "_".join(
-        [
-            case.compset,
-            case.res,
-            json.dumps(sorted(case.variables.items())),
-            case.data_url,
-            case.driver,
-            case.ctsm_tag,
-        ]
-    )
-    case_id = bytes(hash_parts.encode("utf-8"))
-    return hashlib.md5(case_id).hexdigest()
 
 
 # This must come before /{case_id} otherwise it will be handled by get_case.
@@ -42,7 +18,7 @@ def get_case_allowed_vars() -> Any:
     """
     Get the list of CTSM allowed variables that can be changed with xmlchange.
     """
-    return schemas.get_case_allowed_variables()
+    return schemas.CaseAllowedVariable.get_case_allowed_variables()
 
 
 @router.get("/", response_model=List[schemas.CaseDB])
@@ -63,7 +39,10 @@ def get_case(
     """
     Get the case with the given id.
     """
-    return crud.case.get_case_with_task_info(db, case_id=case_id)
+    case = crud.case.get(db, id=case_id)
+    if not case:
+        return None
+    return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
 
 
 @router.post("/", response_model=schemas.CaseWithTaskInfo)
@@ -71,31 +50,8 @@ def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
     """
     Create a new case with the given parameters.
     """
-    obj_in = schemas.CaseCreateDB(**data.dict(), id="", ctsm_tag=settings.CTSM_TAG)
-    case_id = get_case_id(obj_in)
-    case_with_task_info = crud.case.get_case_with_task_info(db, case_id=case_id)
-
-    if case_with_task_info:
-        if case_with_task_info.status != schemas.TaskStatus.FAILURE:
-            return case_with_task_info
-
-        crud.case.remove(db, id=case_id)
-
-    obj_in.id = case_id
-    case = crud.case.create(db, obj_in=obj_in)
-    task = create_case_task.delay(case)
-    case = crud.case.update(db, db_obj=case, obj_in={"task_id": task.id})
-    error = task.traceback.strip().split("\n")[-1] if task.traceback else None
-
-    return schemas.CaseWithTaskInfo(
-        **schemas.CaseDB.from_orm(case).dict(),
-        task={
-            "task_id": task.id,
-            "status": task.status,
-            "result": task.result,
-            "error": error,
-        },
-    )
+    case = crud.case.create(db, obj_in=data)
+    return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
 
 
 @router.delete("/{case_id}")
@@ -106,10 +62,6 @@ def delete_case(
     """
     Delete the case with the given id.
     """
-    if (settings.CASES_ROOT / case_id).exists():
-        shutil.rmtree(settings.CASES_ROOT / case_id)
-    if (settings.ARCHIVES_ROOT / f"{case_id}.tar.gz").exists():
-        os.remove(settings.ARCHIVES_ROOT / f"{case_id}.tar.gz")
     return crud.case.remove(db, id=case_id)
 
 

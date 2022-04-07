@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from pydantic import BaseModel, parse_file_as, validator
 
+from app import models, tasks
 from app.core import settings
 from app.utils.logger import logger
 
@@ -35,6 +36,25 @@ class CaseStatus(str, Enum):
     FAILED = "FAILED"
 
 
+class CaseAllowedVariable(BaseModel):
+    name: str
+    # The type values are based on what is used in CTSM xml files, except for date,
+    # which is char in yyyy-mm-dd format in CTSM.
+    type: CTSMVarType
+    choices: Optional[List[Union[str, int]]] = None
+    allow_multiple: bool = False
+    description: Optional[str] = None
+    default: Optional[Union[str, int, bool, List[Union[str, int, bool]]]] = None
+
+    @classmethod
+    def get_case_allowed_variables(cls) -> List["CaseAllowedVariable"]:
+        return (
+            parse_file_as(List[CaseAllowedVariable], settings.CASE_ALLOWED_VARS_PATH)
+            if settings.CASE_ALLOWED_VARS_PATH.exists()
+            else []
+        )
+
+
 class CaseBase(BaseModel):
     compset: str
     res: str
@@ -55,7 +75,7 @@ class CaseBase(BaseModel):
 
     @validator("variables", pre=True, always=True)
     def validate_variables(cls, variables: Dict[str, Any]) -> Dict[str, Any]:
-        allowed_variables = get_case_allowed_variables()
+        allowed_variables = CaseAllowedVariable.get_case_allowed_variables()
         filtered_variables = {}
         errors = []
         for key, value in variables.items():
@@ -124,21 +144,18 @@ class CaseUpdate(CaseDB):
 class CaseWithTaskInfo(CaseDB):
     task: Task
 
+    @staticmethod
+    def get_case_with_task_info(case: models.CaseModel) -> Optional["CaseWithTaskInfo"]:
+        task_dict = {"task_id": None, "status": None, "result": None, "error": None}
 
-class CaseAllowedVariable(BaseModel):
-    name: str
-    # The type values are based on what is used in CTSM xml files, except for date,
-    # which is char in yyyy-mm-dd format in CTSM.
-    type: CTSMVarType
-    choices: Optional[List[Union[str, int]]] = None
-    allow_multiple: bool = False
-    description: Optional[str] = None
-    default: Optional[Union[str, int, bool, List[Union[str, int, bool]]]] = None
-
-
-def get_case_allowed_variables() -> List[CaseAllowedVariable]:
-    return (
-        parse_file_as(List[CaseAllowedVariable], settings.CASE_ALLOWED_VARS_PATH)
-        if settings.CASE_ALLOWED_VARS_PATH.exists()
-        else []
-    )
+        if case.task_id:
+            task = tasks.celery_app.AsyncResult(case.task_id)
+            task_dict = {
+                "task_id": task.id,
+                "status": task.status,
+                "result": task.result,
+                "error": task.traceback.strip().split("\n")[-1]
+                if task.traceback
+                else None,
+            }
+        return CaseWithTaskInfo(**CaseDB.from_orm(case).dict(), task=task_dict)

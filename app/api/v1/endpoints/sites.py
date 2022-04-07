@@ -8,8 +8,6 @@ from app import crud, schemas
 from app.core import settings
 from app.db.session import get_db
 
-from .cases import create_case
-
 router = APIRouter()
 
 
@@ -67,7 +65,9 @@ def create_site_case(
         data_url=site.url,
         driver=site_case.driver,
     )
-    case_task = create_case(data=data, db=db)
+    case = crud.case.create(db, obj_in=data)
+    case_task = schemas.CaseWithTaskInfo.get_case_with_task_info(case)
+    assert case_task  # This should never fail
     obj_in = schemas.SiteCaseDBCreate(
         name=site_case.site_name,
         case_id=case_task.id,

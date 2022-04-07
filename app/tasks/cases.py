@@ -86,8 +86,8 @@ def create_case_task(case: models.CaseModel) -> str:
     cmds.extend(
         [
             (["./case.setup"], case_path, schemas.CaseStatus.SETUP),
-            (["./case.build"], case_path, schemas.CaseStatus.BUILT),
-            (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
+            # (["./case.build"], case_path, schemas.CaseStatus.BUILT),
+            # (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
         ]
     )
 
