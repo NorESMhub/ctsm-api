@@ -1,9 +1,9 @@
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel
 
-from .cases import CTSMDriver
+from .cases import CaseAllowedVariable, CTSMDriver
 
 
 class SiteProperties(BaseModel):
@@ -16,7 +16,7 @@ class SiteProperties(BaseModel):
 
 class SiteCaseCreate(BaseModel):
     site_name: str
-    variables: Dict[str, Any] = {}
+    variables: List[CaseAllowedVariable] = []
     driver: CTSMDriver = CTSMDriver.mct
 
     class Config:

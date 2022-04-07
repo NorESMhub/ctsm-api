@@ -72,22 +72,29 @@ def create_case_task(case: models.CaseModel) -> str:
     if case.variables:
         validated_variables = schemas.CaseBase.validate_variables(case.variables)
         xml_change_flags = []
-        for key, variables in validated_variables.items():
-            xml_change_flags.append(f"{key}={variables}")
+        for variable in validated_variables:
+            if variable.category == "ctsm_xml":
+                value = (
+                    ", ".join(variable.value)
+                    if isinstance(variable.value, list)
+                    else variable.value
+                )
+                xml_change_flags.append(f"{variable.name}={value}")
 
-        cmds.append(
-            (
-                ["./xmlchange", ",".join(xml_change_flags)],
-                case_path,
-                schemas.CaseStatus.UPDATED,
-            ),
-        )
+        if xml_change_flags:
+            cmds.append(
+                (
+                    ["./xmlchange", ",".join(xml_change_flags)],
+                    case_path,
+                    schemas.CaseStatus.UPDATED,
+                ),
+            )
 
     cmds.extend(
         [
             (["./case.setup"], case_path, schemas.CaseStatus.SETUP),
-            # (["./case.build"], case_path, schemas.CaseStatus.BUILT),
-            # (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
+            (["./case.build"], case_path, schemas.CaseStatus.BUILT),
+            (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
         ]
     )
 

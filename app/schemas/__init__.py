@@ -7,6 +7,7 @@ from .cases import (
     CaseUpdate,
     CaseWithTaskInfo,
     CTSMDriver,
+    VariableCategory,
 )
 from .geojson import Feature, FeatureCollection, Point
 from .sites import (

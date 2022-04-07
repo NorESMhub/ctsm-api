@@ -15,15 +15,14 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
     @staticmethod
     def get_case_id(obj_in: schemas.CaseDB) -> str:
         """
-        Case id is a hash of the compset, res, variables, data_url,
-        driver, and ctsm_tag.
+        Case id is a hash of the compset, res, variables, data_url, driver, and ctsm_tag.
         This value is also used as the case path under `resources/cases/`.
         """
         hash_parts = "_".join(
             [
                 obj_in.compset,
                 obj_in.res,
-                json.dumps(sorted(obj_in.variables.items())),
+                json.dumps(list(map(lambda v: v.dict(), obj_in.variables))),
                 obj_in.data_url,
                 obj_in.driver,
                 obj_in.ctsm_tag,

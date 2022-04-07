@@ -1,5 +1,10 @@
+from typing import Awaitable, Callable
+
+import pydantic
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 from app.api.v1.api import api_router
 from app.core import settings
@@ -27,5 +32,24 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
+
+
+async def catch_exceptions_middleware(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    """
+    Using this middleware we can return exceptions to the client as needed, while letting CORS middleware being applied.
+    Otherwise, errors won't be returned for requests from clients with different origins.
+    """
+    try:
+        return await call_next(request)
+    except pydantic.ValidationError as exc:
+        return Response(exc.json(), status_code=500)
+    except Exception as exc:
+        logger.exception(exc)
+        return Response("Internal server error", status_code=500)
+
+
+app.middleware("http")(catch_exceptions_middleware)
 
 app.include_router(api_router, prefix=settings.API_V1)
