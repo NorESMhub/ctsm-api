@@ -1,10 +1,11 @@
 from .cases import (
-    CaseAllowedVariable,
     CaseBase,
     CaseCreateDB,
     CaseDB,
     CaseStatus,
     CaseUpdate,
+    CaseVariable,
+    CaseVariableConfig,
     CaseWithTaskInfo,
     CTSMDriver,
     VariableCategory,

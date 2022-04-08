@@ -1,19 +1,18 @@
 import re
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel, parse_file_as, validator
 
 from app import models, tasks
 from app.core import settings
-from app.utils.logger import logger
 
 from .tasks import Task
 
 
-class CTSMVarType(str, Enum):
-    """The type values are based on what is used in CTSM xml files,
+class VariableType(str, Enum):
+    """The types are based on what is used in CTSM xml files,
     except for date, which is char in yyyy-mm-dd format in CTSM."""
 
     char = "char"
@@ -22,7 +21,13 @@ class CTSMVarType(str, Enum):
     date = "date"
 
 
-CTSM_VAR_VALUE_TYPES = Union[str, int, bool, List[Union[str, int, bool]]]
+VARIABLE_VALUE = Union[str, int, bool, List[Union[str, int, bool]]]
+
+
+class VariableCategory(str, Enum):
+    ctsm_xml = "ctsm_xml"
+    ctsm_nl_ln = "ctsm_nl_lnd"
+    fates = "fates"
 
 
 class VariableValidation(BaseModel):
@@ -32,29 +37,31 @@ class VariableValidation(BaseModel):
     choices: Optional[List[Union[str, int]]]
 
 
-class VariableCategory(str, Enum):
-    ctsm_xml = "ctsm_xml"
-    ctsm_nl_ln = "ctsm_nl_lnd"
-    fates = "fates"
-
-
-class CaseAllowedVariable(BaseModel):
+class CaseVariableConfig(BaseModel):
     name: str
     category: VariableCategory
-    type: CTSMVarType
+    type: VariableType
     description: Optional[str]
     allow_multiple: bool = False
     validation: Optional[VariableValidation]
-    default: Optional[CTSM_VAR_VALUE_TYPES]
-    value: Optional[CTSM_VAR_VALUE_TYPES]
+    default: Optional[VARIABLE_VALUE]
 
     @classmethod
-    def get_case_allowed_variables(cls) -> List["CaseAllowedVariable"]:
+    def get_variables_config(cls) -> List["CaseVariableConfig"]:
         return (
-            parse_file_as(List[CaseAllowedVariable], settings.CASE_ALLOWED_VARS_PATH)
+            parse_file_as(List[CaseVariableConfig], settings.CASE_ALLOWED_VARS_PATH)
             if settings.CASE_ALLOWED_VARS_PATH.exists()
             else []
         )
+
+
+class CaseVariable(BaseModel):
+    name: str
+    value: VARIABLE_VALUE
+
+    # Category is populated by CaseBase variables validator.
+    # All other schemas that use this class should use CaseBase for validation.
+    category: Optional[VariableCategory] = None
 
 
 class CTSMDriver(str, Enum):
@@ -76,7 +83,7 @@ class CaseStatus(str, Enum):
 class CaseBase(BaseModel):
     compset: str
     res: str
-    variables: List[CaseAllowedVariable] = []
+    variables: List[CaseVariable] = []
     driver: CTSMDriver = CTSMDriver.mct
     data_url: str
 
@@ -85,36 +92,33 @@ class CaseBase(BaseModel):
             "example": {
                 "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
                 "res": "1x1_ALP1",
-                "variables": {},
+                "variables": [
+                    {"name": "STOP_OPTION", "value": "nmonths"},
+                    {"name": "STOP_N", "value": 3},
+                ],
                 "driver": CTSMDriver.mct,
-                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",  # noqa: E501
+                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",
             }
         }
 
     @validator("variables", always=True)
-    def validate_variables(
-        cls, variables: List[Union[CaseAllowedVariable, Dict[str, Any]]]
-    ) -> List[CaseAllowedVariable]:
-        allowed_variables = CaseAllowedVariable.get_case_allowed_variables()
+    def validate_variables(cls, variables: List[CaseVariable]) -> List[CaseVariable]:
+        variables_config = CaseVariableConfig.get_variables_config()
         validated_variables = []
         errors = None
 
         for variable in variables:
-            if isinstance(variable, dict):
-                variable = CaseAllowedVariable(**variable)
-
-            if not variable.value:
-                continue
-
-            var_props = next(
-                filter(lambda v: v.name == variable.name, allowed_variables), None
+            variable_config = next(
+                filter(lambda config: config.name == variable.name, variables_config),
+                None,
             )
-            if not var_props:
+
+            if not variable_config:
                 errors = f"Variable {variable.name} is not allowed."
                 continue
 
             value = variable.value
-            if var_props.allow_multiple:
+            if variable_config.allow_multiple:
                 if not isinstance(value, list):
                     value = [value]
             else:
@@ -130,24 +134,19 @@ class CaseBase(BaseModel):
             validated_values = []
             for v in value:
                 validated_value: Optional[Union[str, int, bool]] = None
-
-                if var_props.type == "char":
+                if variable_config.type == "char":
                     try:
                         validated_value = str(v)
-                    except Exception as e:
-                        # This should never happen.
-                        logger.error(
-                            f"Failed to convert variable {variable.name} to string: {e}"
-                        )
+                    except ValueError:
                         errors = f"Variable {variable.name} is not valid string."
                         continue
-                elif var_props.type == "integer":
+                elif variable_config.type == "integer":
                     try:
                         validated_value = int(v)
                     except ValueError:
                         errors = f"Variable {variable.name} is not valid integer"
                         continue
-                elif var_props.type == "logical":
+                elif variable_config.type == "logical":
                     try:
                         validated_value = bool(v)
                     except ValueError:
@@ -158,40 +157,40 @@ class CaseBase(BaseModel):
                     errors = f"Variable {variable.name} is not valid."
                     continue
 
-                if var_props.validation:
-                    if var_props.validation.choices:
-                        if validated_value not in var_props.validation.choices:
+                if variable_config.validation:
+                    if variable_config.validation.choices:
+                        if validated_value not in variable_config.validation.choices:
                             errors = f"{variable.value} is not a valid choice for {variable.name}."
                             continue
                     else:
-                        if var_props.validation.min:
+                        if variable_config.validation.min:
                             if (
                                 type(validated_value) != int
                                 or type(validated_value) != float
-                                or validated_value < var_props.validation.min
+                                or validated_value < variable_config.validation.min
                             ):
                                 errors = f"{variable.value} is less than minimum value for {variable.name}."
                                 continue
-                        if var_props.validation.max:
+                        if variable_config.validation.max:
                             if (
                                 type(validated_value) != int
                                 or type(validated_value) != float
-                                or validated_value > var_props.validation.max
+                                or validated_value > variable_config.validation.max
                             ):
                                 errors = f"{variable.value} is greater than maximum value for {variable.name}."
                                 continue
-                        if var_props.validation.pattern:
+                        if variable_config.validation.pattern:
                             if type(validated_value) != str or not re.match(
-                                var_props.validation.pattern, validated_value
+                                variable_config.validation.pattern, validated_value
                             ):
                                 errors = f"{variable.value} does not match pattern for {variable.name}."
                                 continue
 
                 validated_values.append(validated_value)
 
-            var_props_dict = var_props.dict()
-            var_props_dict["value"] = validated_values
-            validated_variables.append(CaseAllowedVariable(**var_props_dict))
+            variable.value = validated_values
+            variable.category = variable_config.category
+            validated_variables.append(variable)
 
         if errors:
             raise ValueError(errors)

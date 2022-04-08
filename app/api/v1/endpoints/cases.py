@@ -13,12 +13,12 @@ router = APIRouter()
 
 
 # This must come before /{case_id} otherwise it will be handled by get_case.
-@router.get("/allowed_vars", response_model=List[schemas.CaseAllowedVariable])
+@router.get("/variables", response_model=List[schemas.CaseVariableConfig])
 def get_case_allowed_vars() -> Any:
     """
-    Get the list of CTSM allowed variables that can be changed with xmlchange.
+    Get the list of CTSM variables config that can be changed by user.
     """
-    return schemas.CaseAllowedVariable.get_case_allowed_variables()
+    return schemas.CaseVariableConfig.get_variables_config()
 
 
 @router.get("/", response_model=List[schemas.CaseDB])

@@ -53,6 +53,11 @@ def create_site_case(
 ) -> Any:
     """
     Create a case for the given site.
+
+    Clients need to include variable name and value. Other fields will be ignored and the actual configured properties
+    will be used.
+    - See CaseVariableConfig schema for all the possible fields.
+    - See /cases/variables endpoint for a full list of allowed variables and their properties.
     """
     site = get_site_by_name(site_case.site_name)
     if not site:

@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from .cases import CaseAllowedVariable, CTSMDriver
+from .cases import CaseVariable, CTSMDriver
 
 
 class SiteProperties(BaseModel):
@@ -16,14 +16,17 @@ class SiteProperties(BaseModel):
 
 class SiteCaseCreate(BaseModel):
     site_name: str
-    variables: List[CaseAllowedVariable] = []
+    variables: List[CaseVariable] = []
     driver: CTSMDriver = CTSMDriver.mct
 
     class Config:
         schema_extra = {
             "example": {
                 "site_name": "ALP1",
-                "variables": {"STOP_OPTION": "nmonths", "STOP_N": 3},
+                "variables": [
+                    {"name": "STOP_OPTION", "value": "nmonths"},
+                    {"name": "STOP_N", "value": 3},
+                ],
                 "driver": CTSMDriver.mct,
             }
         }

@@ -44,6 +44,7 @@ async def catch_exceptions_middleware(
     try:
         return await call_next(request)
     except pydantic.ValidationError as exc:
+        logger.exception(exc)
         return Response(exc.json(), status_code=500)
     except Exception as exc:
         logger.exception(exc)

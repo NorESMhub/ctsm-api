@@ -70,9 +70,10 @@ def create_case_task(case: models.CaseModel) -> str:
         )
     ]
     if case.variables:
-        validated_variables = schemas.CaseBase.validate_variables(case.variables)
-        xml_change_flags = []
-        for variable in validated_variables:
+        xml_change_flags: List[str] = []
+        for variable_dict in case.variables:
+            assert isinstance(variable_dict, dict)
+            variable = schemas.CaseVariable(**variable_dict)
             if variable.category == "ctsm_xml":
                 value = (
                     ", ".join(variable.value)
