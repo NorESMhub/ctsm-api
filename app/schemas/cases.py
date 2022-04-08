@@ -17,11 +17,12 @@ class VariableType(str, Enum):
 
     char = "char"
     integer = "integer"
+    float = "float"
     logical = "logical"
     date = "date"
 
 
-VARIABLE_VALUE = Union[str, int, bool, List[Union[str, int, bool]]]
+VARIABLE_VALUE = Union[str, int, float, bool, List[Union[str, int, float, bool]]]
 
 
 class VariableCategory(str, Enum):
@@ -34,7 +35,7 @@ class VariableValidation(BaseModel):
     min: Optional[Union[int, float]]
     max: Optional[Union[int, float]]
     pattern: Optional[str]
-    choices: Optional[List[Union[str, int]]]
+    choices: Optional[List[Union[str, int, float]]]
 
 
 class CaseVariableConfig(BaseModel):
@@ -42,6 +43,7 @@ class CaseVariableConfig(BaseModel):
     category: VariableCategory
     type: VariableType
     description: Optional[str]
+    readonly: bool = False
     allow_multiple: bool = False
     validation: Optional[VariableValidation]
     default: Optional[VARIABLE_VALUE]
@@ -49,8 +51,8 @@ class CaseVariableConfig(BaseModel):
     @classmethod
     def get_variables_config(cls) -> List["CaseVariableConfig"]:
         return (
-            parse_file_as(List[CaseVariableConfig], settings.CASE_ALLOWED_VARS_PATH)
-            if settings.CASE_ALLOWED_VARS_PATH.exists()
+            parse_file_as(List[CaseVariableConfig], settings.VARIABLES_CONFIG_PATH)
+            if settings.VARIABLES_CONFIG_PATH.exists()
             else []
         )
 
@@ -133,7 +135,7 @@ class CaseBase(BaseModel):
 
             validated_values = []
             for v in value:
-                validated_value: Optional[Union[str, int, bool]] = None
+                validated_value: Optional[Union[str, int, float, bool]] = None
                 if variable_config.type == "char":
                     try:
                         validated_value = str(v)
@@ -145,6 +147,12 @@ class CaseBase(BaseModel):
                         validated_value = int(v)
                     except ValueError:
                         errors = f"Variable {variable.name} is not valid integer"
+                        continue
+                elif variable_config.type == "float":
+                    try:
+                        validated_value = float(v)
+                    except ValueError:
+                        errors = f"Variable {variable.name} is not valid float"
                         continue
                 elif variable_config.type == "logical":
                     try:

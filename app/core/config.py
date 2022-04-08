@@ -12,9 +12,8 @@ CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
 ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
-CASE_ALLOWED_VARS_PATH = (
-    PROJECT_ROOT / "resources" / "config" / "case_allowed_vars.json"
-)
+VARIABLES_CONFIG_PATH = PROJECT_ROOT / "resources" / "config" / "variables_config.json"
+
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 
 
@@ -62,7 +61,7 @@ class Settings(BaseSettings):
     DATA_ROOT: Path = Field(DATA_ROOT, const=True)
     ARCHIVES_ROOT: Path = Field(ARCHIVES_ROOT, const=True)
     SITES_PATH: Path = Field(SITES_PATH, const=True)
-    CASE_ALLOWED_VARS_PATH: Path = Field(CASE_ALLOWED_VARS_PATH, const=True)
+    VARIABLES_CONFIG_PATH: Path = Field(VARIABLES_CONFIG_PATH, const=True)
 
     # CTSM settings
     CTSM_TAG: str
