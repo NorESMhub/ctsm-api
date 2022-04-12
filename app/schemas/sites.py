@@ -12,6 +12,10 @@ class SiteProperties(BaseModel):
     compset: str
     res: str
     url: str
+    # List of site specific variables that cannot be edited by the user.
+    # These are readonly variables in `variables_config.json` and are set from the site properties.
+    # These are mainly path variables in the site data folder, fetched from the `url` property.
+    config: Optional[List[CaseVariable]]
 
 
 class SiteCaseCreate(BaseModel):

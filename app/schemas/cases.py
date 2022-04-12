@@ -1,12 +1,14 @@
 import re
 from datetime import datetime
 from enum import Enum
+from functools import lru_cache
 from typing import List, Optional, Union
 
 from pydantic import BaseModel, parse_file_as, validator
 
-from app import models, tasks
+from app import models
 from app.core import settings
+from app.tasks.celery_app import celery_app
 
 from .tasks import Task
 
@@ -22,12 +24,12 @@ class VariableType(str, Enum):
     date = "date"
 
 
-VARIABLE_VALUE = Union[str, int, float, bool, List[Union[str, int, float, bool]]]
+VARIABLE_VALUE = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 
 
 class VariableCategory(str, Enum):
     ctsm_xml = "ctsm_xml"
-    ctsm_nl_ln = "ctsm_nl_lnd"
+    user_nl_clm = "user_nl_clm"
     fates = "fates"
 
 
@@ -35,20 +37,30 @@ class VariableValidation(BaseModel):
     min: Optional[Union[int, float]]
     max: Optional[Union[int, float]]
     pattern: Optional[str]
-    choices: Optional[List[Union[str, int, float]]]
+    choices: Optional[List[Union[int, float, str]]]
+
+
+class CaseVariableDescription(BaseModel):
+    summary: str
+    details: Optional[str]
+    url: Optional[str]
 
 
 class CaseVariableConfig(BaseModel):
     name: str
     category: VariableCategory
     type: VariableType
-    description: Optional[str]
+    description: Optional[CaseVariableDescription]
     readonly: bool = False
     allow_multiple: bool = False
     validation: Optional[VariableValidation]
     default: Optional[VARIABLE_VALUE]
 
+    class Config:
+        smart_union = True
+
     @classmethod
+    @lru_cache()
     def get_variables_config(cls) -> List["CaseVariableConfig"]:
         return (
             parse_file_as(List[CaseVariableConfig], settings.VARIABLES_CONFIG_PATH)
@@ -61,9 +73,13 @@ class CaseVariable(BaseModel):
     name: str
     value: VARIABLE_VALUE
 
-    # Category is populated by CaseBase variables validator.
+    # category and type are populated by CaseBase variables validator.
     # All other schemas that use this class should use CaseBase for validation.
     category: Optional[VariableCategory] = None
+    type: Optional[VariableType] = None
+
+    class Config:
+        smart_union = True
 
 
 class CTSMDriver(str, Enum):
@@ -116,7 +132,6 @@ class CaseBase(BaseModel):
             )
 
             if not variable_config:
-                errors = f"Variable {variable.name} is not allowed."
                 continue
 
             value = variable.value
@@ -135,8 +150,8 @@ class CaseBase(BaseModel):
 
             validated_values = []
             for v in value:
-                validated_value: Optional[Union[str, int, float, bool]] = None
-                if variable_config.type == "char":
+                validated_value: Optional[Union[int, float, str, bool]] = None
+                if variable_config.type == "char" or variable_config.type == "date":
                     try:
                         validated_value = str(v)
                     except ValueError:
@@ -161,7 +176,7 @@ class CaseBase(BaseModel):
                         errors = f"Variable {variable.name} is not valid boolean"
                         continue
 
-                if not validated_value:
+                if validated_value is None:
                     errors = f"Variable {variable.name} is not valid."
                     continue
 
@@ -198,6 +213,7 @@ class CaseBase(BaseModel):
 
             variable.value = validated_values
             variable.category = variable_config.category
+            variable.type = variable_config.type
             validated_variables.append(variable)
 
         if errors:
@@ -235,7 +251,7 @@ class CaseWithTaskInfo(CaseDB):
         task_dict = {"task_id": None, "status": None, "result": None, "error": None}
 
         if case.task_id:
-            task = tasks.celery_app.AsyncResult(case.task_id)
+            task = celery_app.AsyncResult(case.task_id)
             task_dict = {
                 "task_id": task.id,
                 "status": task.status,

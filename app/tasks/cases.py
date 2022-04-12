@@ -7,7 +7,7 @@ import subprocess
 import tarfile
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import requests
 
@@ -21,6 +21,18 @@ from .celery_app import celery_app
 
 def get_case_data_path(data_url: str) -> Path:
     return settings.DATA_ROOT / hashlib.md5(bytes(data_url.encode("utf-8"))).hexdigest()
+
+
+def to_namelist_value(
+    value: Union[int, float, str, bool], value_type: schemas.VariableType
+) -> str:
+    match value_type:
+        case schemas.VariableType.char | schemas.VariableType.date:
+            return f"'{value}'"
+        case schemas.VariableType.integer | schemas.VariableType.float:
+            return value
+        case schemas.VariableType.logical:
+            return ".true." if value else ".false."
 
 
 @celery_app.task
@@ -47,59 +59,9 @@ def create_case_task(case: models.CaseModel) -> str:
 
     shutil.rmtree(case_path, ignore_errors=True)
 
-    cmds: List[Tuple[List[str], Optional[Path], schemas.CaseStatus]] = [
-        (
-            [
-                str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
-                "--case",
-                str(case_path),
-                "--compset",
-                case.compset,
-                "--res",
-                case.res,
-                "--driver",
-                case.driver,
-                "--machine",
-                settings.MACHINE_NAME,
-                "--run-unsupported",
-                "--handle-preexisting-dirs",
-                "r",
-            ],
-            None,
-            schemas.CaseStatus.CREATED,
-        )
-    ]
-    if case.variables:
-        xml_change_flags: List[str] = []
-        for variable_dict in case.variables:
-            assert isinstance(variable_dict, dict)
-            variable = schemas.CaseVariable(**variable_dict)
-            if variable.category == "ctsm_xml":
-                value = (
-                    ", ".join(variable.value)
-                    if isinstance(variable.value, list)
-                    else variable.value
-                )
-                xml_change_flags.append(f"{variable.name}={value}")
-
-        if xml_change_flags:
-            cmds.append(
-                (
-                    ["./xmlchange", ",".join(xml_change_flags)],
-                    case_path,
-                    schemas.CaseStatus.UPDATED,
-                ),
-            )
-
-    cmds.extend(
-        [
-            (["./case.setup"], case_path, schemas.CaseStatus.SETUP),
-            (["./case.build"], case_path, schemas.CaseStatus.BUILT),
-            (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
-        ]
-    )
-
-    for cmd, cwd, status in cmds:
+    def run_cmd(
+        cmd: List[str], cwd: Optional[Path], success_status: schemas.CaseStatus
+    ):
         logger.info(f"Running {' '.join(cmd)}")
         start = time.time()
 
@@ -116,7 +78,62 @@ def create_case_task(case: models.CaseModel) -> str:
             crud.case.update(
                 db,
                 db_obj=case,
-                obj_in={"status": status},
+                obj_in={"status": success_status},
             )
+
+    run_cmd(
+        [
+            str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
+            "--case",
+            str(case_path),
+            "--compset",
+            case.compset,
+            "--res",
+            case.res,
+            "--driver",
+            case.driver,
+            "--machine",
+            settings.MACHINE_NAME,
+            "--run-unsupported",
+            "--handle-preexisting-dirs",
+            "r",
+        ],
+        None,
+        schemas.CaseStatus.CREATED,
+    )
+    run_cmd(["./case.setup"], case_path, schemas.CaseStatus.SETUP)
+
+    if case.variables:
+        xml_change_flags: List[str] = []
+        for variable_dict in case.variables:
+            assert isinstance(variable_dict, dict)
+            variable = schemas.CaseVariable(**variable_dict)
+            value = (
+                ",".join(map(lambda v: str(v), variable.value))
+                if isinstance(variable.value, list)
+                else variable.value
+            )
+            if variable.category == "ctsm_xml":
+                xml_change_flags.append(f"{variable.name}={value}")
+            elif variable.category == "user_nl_clm":
+                with open(case_path / "user_nl_clm", "a") as f:
+                    f.write(
+                        f"{variable.name} = {to_namelist_value(value, variable.type)}\n"
+                    )
+
+        if xml_change_flags:
+            run_cmd(
+                ["./xmlchange", ",".join(xml_change_flags)],
+                case_path,
+                schemas.CaseStatus.UPDATED,
+            )
+
+    cmds: List[Tuple[List[str], Optional[Path], schemas.CaseStatus]] = [
+        (["./case.build"], case_path, schemas.CaseStatus.BUILT),
+        (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
+    ]
+
+    for cmd, cwd, status in cmds:
+        run_cmd(cmd, cwd, status)
 
     return "Case is ready"
