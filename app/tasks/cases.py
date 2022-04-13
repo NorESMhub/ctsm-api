@@ -30,7 +30,7 @@ def to_namelist_value(
         case schemas.VariableType.char | schemas.VariableType.date:
             return f"'{value}'"
         case schemas.VariableType.integer | schemas.VariableType.float:
-            return value
+            return str(value)
         case schemas.VariableType.logical:
             return ".true." if value else ".false."
 
@@ -61,7 +61,7 @@ def create_case_task(case: models.CaseModel) -> str:
 
     def run_cmd(
         cmd: List[str], cwd: Optional[Path], success_status: schemas.CaseStatus
-    ):
+    ) -> None:
         logger.info(f"Running {' '.join(cmd)}")
         start = time.time()
 
