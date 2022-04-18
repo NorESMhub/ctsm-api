@@ -19,7 +19,7 @@ class TaskStatus(str, Enum):
 
 
 class Task(BaseModel):
-    task_id: str
-    status: TaskStatus
-    result: Any
+    task_id: Optional[str]
+    status: Optional[TaskStatus]
+    result: Optional[Any]
     error: Optional[str]

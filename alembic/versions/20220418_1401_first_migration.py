@@ -1,8 +1,8 @@
 """First migration
 
-Revision ID: 9407cb499bf1
+Revision ID: a434cc6ab0e7
 Revises:
-Create Date: 2022-03-30 09:16:06.919467+00:00
+Create Date: 2022-04-18 14:01:21.550652+00:00
 
 """
 import sqlalchemy as sa
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "9407cb499bf1"
+revision = "a434cc6ab0e7"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -24,12 +24,15 @@ def upgrade():
         sa.Column("compset", sa.String(length=300), nullable=False),
         sa.Column("res", sa.String(length=100), nullable=False),
         sa.Column("variables", sa.JSON(), nullable=False),
+        sa.Column("fates_indices", sa.String(length=300), nullable=True),
         sa.Column("data_url", sa.String(length=300), nullable=False),
         sa.Column("driver", sa.String(length=5), nullable=False),
         sa.Column("ctsm_tag", sa.String(length=20), nullable=False),
+        sa.Column("env", sa.JSON(), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("date_created", sa.String(length=30), nullable=False),
-        sa.Column("task_id", sa.String(length=20), nullable=True),
+        sa.Column("create_task_id", sa.String(length=20), nullable=True),
+        sa.Column("run_task_id", sa.String(length=20), nullable=True),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_cases_id"), "cases", ["id"], unique=False)

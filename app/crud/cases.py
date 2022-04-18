@@ -49,9 +49,12 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
             self.remove(db, id=case_id)
 
         data.id = case_id
+        data.env = {
+            "CESMDATAROOT": str(settings.DATA_ROOT / case_id),
+        }
         new_case = super().create(db, obj_in=data)
-        task = tasks.create_case_task.delay(new_case)
-        return self.update(db, db_obj=new_case, obj_in={"task_id": task.id})
+        task = tasks.create_case.delay(new_case)
+        return self.update(db, db_obj=new_case, obj_in={"create_task_id": task.id})
 
     def remove(self, db: Session, *, id: str) -> Optional[models.CaseModel]:  # type: ignore[override]
         if (settings.CASES_ROOT / id).exists():

@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union, cast
 
 from pydantic import BaseModel, parse_file_as, validator
 
@@ -92,8 +92,11 @@ class CTSMDriver(str, Enum):
 class CaseStatus(str, Enum):
     INITIALISED = "INITIALISED"
     CREATED = "CREATED"
-    UPDATED = "UPDATED"
     SETUP = "SETUP"
+    UPDATED = "UPDATED"
+    FATES_INDICES_SET = "FATES INDICES SET"
+    CONFIGURED = "CONFIGURED"
+    BUILDING = "BUILDING"
     BUILT = "BUILT"
     SUBMITTED = "SUBMITTED"
 
@@ -102,6 +105,8 @@ class CaseBase(BaseModel):
     compset: str
     res: str
     variables: List[CaseVariable] = []
+    fates_indices: Optional[str]
+    env: Dict[str, str] = {}
     driver: CTSMDriver = CTSMDriver.mct
     data_url: str
 
@@ -135,6 +140,17 @@ class CaseBase(BaseModel):
                 continue
 
             value = variable.value
+
+            if variable_config.name == "included_pft_indices":
+                fates_indices = cast(
+                    List[str], value.split(",") if isinstance(value, str) else value
+                )
+                try:
+                    value = [int(index.strip()) for index in fates_indices]
+                except ValueError:
+                    errors = "Invalid fates index: {}".format(value)
+                    continue
+
             if variable_config.allow_multiple:
                 if not isinstance(value, list):
                     value = [value]
@@ -229,7 +245,8 @@ class CaseDB(CaseBase):
     ctsm_tag: str
     status: CaseStatus = CaseStatus.INITIALISED
     date_created: datetime = datetime.now()
-    task_id: Optional[str] = None
+    create_task_id: Optional[str] = None
+    run_task_id: Optional[str] = None
 
     class Config:
         orm_mode = True
@@ -244,20 +261,25 @@ class CaseUpdate(CaseDB):
 
 
 class CaseWithTaskInfo(CaseDB):
-    task: Task
+    create_task: Task
+    run_task: Task
 
     @staticmethod
     def get_case_with_task_info(case: models.CaseModel) -> Optional["CaseWithTaskInfo"]:
-        task_dict = {"task_id": None, "status": None, "result": None, "error": None}
+        tasks = {}
+        for task_id_type in ["create_task_id", "run_task_id"]:
+            task_id = getattr(case, task_id_type)
+            task_dict = {"task_id": None, "status": None, "result": None, "error": None}
+            if task_id:
+                task = celery_app.AsyncResult(case.create_task_id)
+                task_dict = {
+                    "task_id": task.id,
+                    "status": task.status,
+                    "result": task.result,
+                    "error": task.traceback.strip().split("\n")[-1]
+                    if task.traceback
+                    else None,
+                }
+            tasks[task_id_type[:-3]] = task_dict
 
-        if case.task_id:
-            task = celery_app.AsyncResult(case.task_id)
-            task_dict = {
-                "task_id": task.id,
-                "status": task.status,
-                "result": task.result,
-                "error": task.traceback.strip().split("\n")[-1]
-                if task.traceback
-                else None,
-            }
-        return CaseWithTaskInfo(**CaseDB.from_orm(case).dict(), task=task_dict)
+        return CaseWithTaskInfo(**CaseDB.from_orm(case).dict(), **tasks)

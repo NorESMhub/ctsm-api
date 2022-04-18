@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from sqlalchemy import JSON, Column, String
 
@@ -14,9 +14,12 @@ class CaseModel(Base):
     compset: str = Column(String(300), nullable=False)
     res: str = Column(String(100), nullable=False)
     variables: Dict[str, Any] = Column(JSON(), nullable=False)
+    fates_indices: Optional[str] = Column(String(300), nullable=True)
     data_url: str = Column(String(300), nullable=False)
     driver: str = Column(String(5), nullable=False)
     ctsm_tag: str = Column(String(20), nullable=False)
+    env: Dict[str, str] = Column(JSON(), nullable=False, default={})
     status: str = Column(String(20), nullable=False)
     date_created: str = Column(String(30), nullable=False)
-    task_id: str = Column(String(20), nullable=True)
+    create_task_id: Optional[str] = Column(String(20), nullable=True)
+    run_task_id: Optional[str] = Column(String(20), nullable=True)

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
-from app import crud, schemas
+from app import crud, schemas, tasks
 from app.core import settings
 from app.db.session import get_db
 
@@ -52,6 +52,15 @@ def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
     """
     case = crud.case.create(db, obj_in=data)
     return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
+
+
+@router.post("/{case_id}", response_model=schemas.CaseWithTaskInfo)
+def run_case(case_id: str, db: Session = Depends(get_db)) -> Any:
+    case = crud.case.get(db, id=case_id)
+    task = tasks.run_case.delay(case.id)
+    return crud.case.update(
+        db, case, {"status": schemas.CaseStatus.BUILDING, "run_task_id": task.id}
+    )
 
 
 @router.delete("/{case_id}")
