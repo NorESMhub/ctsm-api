@@ -9,6 +9,7 @@ if [[ $HOST_USER && $HOST_UID ]]; then
   id -u "$HOST_USER" &>/dev/null || adduser --quiet --disabled-password --gecos "" --uid "$HOST_UID" "$HOST_USER"
   chown -R "$HOST_USER":"$HOST_USER" /ctsm-api/resources
   USER="$HOST_USER"
+  HOME="/home/$HOST_USER"
 
   cat >>/home/$USER/.bashrc <<EOF
 
@@ -21,7 +22,7 @@ export MPIF77=mpif77
 EOF
 
 export USER=$USER
-export HOME=/home/$USER
+export HOME=$HOME
 export CIME_MACHINE=container
 export MPICC=mpicc
 export MPIFC=mpif90
