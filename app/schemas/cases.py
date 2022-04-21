@@ -31,6 +31,7 @@ class VariableCategory(str, Enum):
     ctsm_xml = "ctsm_xml"
     user_nl_clm = "user_nl_clm"
     fates = "fates"
+    fates_param = "fates_param"
 
 
 class VariableValidation(BaseModel):
@@ -55,6 +56,7 @@ class CaseVariableConfig(BaseModel):
     allow_multiple: bool = False
     validation: Optional[VariableValidation]
     default: Optional[VARIABLE_VALUE]
+    append_input_path = False
 
     class Config:
         smart_union = True
@@ -73,10 +75,11 @@ class CaseVariable(BaseModel):
     name: str
     value: VARIABLE_VALUE
 
-    # category and type are populated by CaseBase variables validator.
+    # category, type, and append_input_path are populated by CaseBase variables validator.
     # All other schemas that use this class should use CaseBase for validation.
     category: Optional[VariableCategory] = None
     type: Optional[VariableType] = None
+    append_input_path = False
 
     class Config:
         smart_union = True
@@ -227,9 +230,14 @@ class CaseBase(BaseModel):
 
                 validated_values.append(validated_value)
 
-            variable.value = validated_values
+            variable.value = (
+                validated_values
+                if variable_config.allow_multiple
+                else validated_values[0]
+            )
             variable.category = variable_config.category
             variable.type = variable_config.type
+            variable.append_input_path = variable_config.append_input_path
             validated_variables.append(variable)
 
         if errors:
@@ -271,7 +279,7 @@ class CaseWithTaskInfo(CaseDB):
             task_id = getattr(case, task_id_type)
             task_dict = {"task_id": None, "status": None, "result": None, "error": None}
             if task_id:
-                task = celery_app.AsyncResult(case.create_task_id)
+                task = celery_app.AsyncResult(task_id)
                 task_dict = {
                     "task_id": task.id,
                     "status": task.status,

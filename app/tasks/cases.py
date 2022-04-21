@@ -119,6 +119,9 @@ def create_case(case: models.CaseModel) -> str:
                 if isinstance(variable.value, list)
                 else variable.value
             )
+            if variable.append_input_path:
+                # TODO Should inputdata be parameterized?
+                value = cesm_data_root / "inputdata" / value
 
             if variable.name == "included_pft_indices":
                 fates_indices = value
@@ -131,8 +134,7 @@ def create_case(case: models.CaseModel) -> str:
                             f"{variable.name} = {to_namelist_value(value, variable.type)}\n"
                         )
                     if variable.name == "fates_paramfile":
-                        # TODO Should inputdata be parameterized?
-                        fates_param_path = cesm_data_root / "inputdata" / value
+                        fates_param_path = value
 
         if xml_change_flags:
             run_cmd(
@@ -183,12 +185,21 @@ def create_case(case: models.CaseModel) -> str:
 
 @celery_app.task
 def run_case(case: models.CaseModel) -> str:
+    case_path = settings.CASES_ROOT / case.id
+
     cmds: List[Tuple[List[str], Optional[Path], schemas.CaseStatus]] = [
-        # (["./case.build"], case_path, schemas.CaseStatus.BUILT),
-        # (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
+        (["./case.build"], case_path, schemas.CaseStatus.BUILT),
+        (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
     ]
 
     for cmd, cwd, status in cmds:
         run_cmd(case, cmd, cwd, status)
+
+    with SessionLocal() as db:
+        crud.case.update(
+            db,
+            db_obj=case,
+            obj_in={"status": schemas.CaseStatus.SUBMITTED},
+        )
 
     return "Case is ready"

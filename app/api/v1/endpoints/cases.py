@@ -57,9 +57,16 @@ def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
 @router.post("/{case_id}", response_model=schemas.CaseWithTaskInfo)
 def run_case(case_id: str, db: Session = Depends(get_db)) -> Any:
     case = crud.case.get(db, id=case_id)
-    task = tasks.run_case.delay(case.id)
-    return crud.case.update(
-        db, case, {"status": schemas.CaseStatus.BUILDING, "run_task_id": task.id}
+    if not case:
+        return None
+
+    task = tasks.run_case.delay(case)
+    return schemas.CaseWithTaskInfo.get_case_with_task_info(
+        crud.case.update(
+            db,
+            db_obj=case,
+            obj_in={"status": schemas.CaseStatus.BUILDING, "run_task_id": task.id},
+        )
     )
 
 

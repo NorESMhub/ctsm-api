@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app import models, schemas, tasks
 from app.core import settings
 from app.crud.base import CRUDBase
+from app.tasks.celery_app import celery_app
 
 
 class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpdate]):
@@ -61,6 +62,16 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
             shutil.rmtree(settings.CASES_ROOT / id)
         if (settings.ARCHIVES_ROOT / f"{id}.tar.gz").exists():
             os.remove(settings.ARCHIVES_ROOT / f"{id}.tar.gz")
+        if (settings.DATA_ROOT / id).exists():
+            shutil.rmtree(settings.DATA_ROOT / id)
+
+        existing_case = self.get(db, id=id)
+        if existing_case:
+            if existing_case.create_task_id:
+                celery_app.AsyncResult(existing_case.create_task_id).forget()
+            if existing_case.run_task_id:
+                celery_app.AsyncResult(existing_case.run_task_id).forget()
+
         return super().remove(db, id=id)
 
 

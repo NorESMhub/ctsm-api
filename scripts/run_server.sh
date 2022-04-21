@@ -3,7 +3,7 @@
 set -e
 
 DEBUG=0
-BUILD=1
+BUILD=0
 while test $# -gt 0; do
   case "$1" in
   -d | --debug)
