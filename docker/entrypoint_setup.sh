@@ -29,6 +29,6 @@ export MPIFC=mpif90
 export MPIF90=mpif90
 export MPIF77=mpif77
 
-ln -fs /ctsm-api/resources/dotcime /home/$USER/.cime
+ln -fs /ctsm-api/resources/dotcime /$HOME/.cime
 
 fi
