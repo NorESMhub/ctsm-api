@@ -61,7 +61,7 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
         if (settings.CASES_ROOT / id).exists():
             shutil.rmtree(settings.CASES_ROOT / id)
         if (settings.ARCHIVES_ROOT / f"{id}.tar.gz").exists():
-            os.remove(settings.ARCHIVES_ROOT / f"{id}.tar.gz")
+            os.remove(settings.ARCHIVES_ROOT / f"{id}.zip")
         if (settings.DATA_ROOT / id).exists():
             shutil.rmtree(settings.DATA_ROOT / id)
 

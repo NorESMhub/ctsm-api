@@ -24,7 +24,7 @@ class VariableType(str, Enum):
     date = "date"
 
 
-VARIABLE_VALUE = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
+VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 
 
 class VariableCategory(str, Enum):
@@ -53,9 +53,10 @@ class CaseVariableConfig(BaseModel):
     type: VariableType
     description: Optional[CaseVariableDescription]
     readonly: bool = False
+    hidden: Optional[bool] = False
     allow_multiple: bool = False
     validation: Optional[VariableValidation]
-    default: Optional[VARIABLE_VALUE]
+    default: Optional[VariableValue]
     append_input_path = False
 
     class Config:
@@ -73,7 +74,7 @@ class CaseVariableConfig(BaseModel):
 
 class CaseVariable(BaseModel):
     name: str
-    value: VARIABLE_VALUE
+    value: VariableValue
 
     # category, type, and append_input_path are populated by CaseBase variables validator.
     # All other schemas that use this class should use CaseBase for validation.
@@ -97,6 +98,7 @@ class CaseStatus(str, Enum):
     CREATED = "CREATED"
     SETUP = "SETUP"
     UPDATED = "UPDATED"
+    FATES_PARAMS_UPDATED = "FATES_PARAMS_UPDATED"
     FATES_INDICES_SET = "FATES INDICES SET"
     CONFIGURED = "CONFIGURED"
     BUILDING = "BUILDING"

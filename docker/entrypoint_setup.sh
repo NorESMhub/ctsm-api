@@ -14,6 +14,7 @@ fi
 
 cat >>"$HOME"/.bashrc <<EOF
 
+export USER="$USER"
 export CIME_MACHINE=container
 export MPICC=mpicc
 export MPIFC=mpif90

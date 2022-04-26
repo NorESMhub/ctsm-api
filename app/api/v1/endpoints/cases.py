@@ -1,5 +1,5 @@
-import tarfile
 from typing import Any, List
+from zipfile import ZipFile
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -86,24 +86,26 @@ def download_case(case_id: str) -> Any:
     """
     Download a compressed tarball of the case with the given id.
     """
-    archive_name = settings.ARCHIVES_ROOT / f"{case_id}.tar.gz"
+    archive_name = settings.ARCHIVES_ROOT / f"{case_id}.zip"
     if archive_name.exists():
         return FileResponse(
             archive_name,
-            headers={"Content-Disposition": f'attachment; filename="{case_id}.tar.gz"'},
-            media_type="application/x-gzip",
+            headers={"Content-Disposition": f'attachment; filename="{case_id}.zip"'},
+            media_type="application/zip",
         )
 
-    if not (settings.CASES_ROOT / case_id).exists():
+    case_path = settings.CASES_ROOT / case_id
+
+    if not case_path.exists():
         raise HTTPException(status_code=404, detail="Case not found")
 
-    with tarfile.open(archive_name, mode="w:gz") as tar:
-        for f in (settings.CASES_ROOT / case_id).iterdir():
+    with ZipFile(archive_name, "w") as zip_file:
+        for f in case_path.rglob("*"):
             if not f.is_symlink():
-                tar.add(f, arcname=f.name)
+                zip_file.write(f, arcname=f.relative_to(case_path))
 
     return FileResponse(
         archive_name,
-        headers={"Content-Disposition": f'attachment; filename="{case_id}.tar.gz"'},
-        media_type="application/x-gzip",
+        headers={"Content-Disposition": f'attachment; filename="{case_id}.zip"'},
+        media_type="application/zip",
     )

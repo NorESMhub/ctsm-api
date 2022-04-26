@@ -110,6 +110,7 @@ def create_case(case: models.CaseModel) -> str:
 
         fates_indices: Optional[str] = None
         fates_param_path: Optional[Path] = None
+        fates_params: List[Tuple[str, schemas.VariableValue]] = []
 
         for variable_dict in case.variables:
             assert isinstance(variable_dict, dict)
@@ -135,6 +136,8 @@ def create_case(case: models.CaseModel) -> str:
                         )
                     if variable.name == "fates_paramfile":
                         fates_param_path = value
+                elif variable.category == "fates_param":
+                    fates_params.append((variable.name, value))
 
         if xml_change_flags:
             run_cmd(
@@ -146,6 +149,37 @@ def create_case(case: models.CaseModel) -> str:
 
         if fates_indices:
             if fates_param_path:
+                for fates_param, value_list in fates_params:
+                    assert isinstance(value_list, str)
+                    for idx, value in enumerate(value_list.split(",")):
+                        run_cmd(
+                            case,
+                            [
+                                str(
+                                    settings.CTSM_ROOT
+                                    / "components"
+                                    / "clm"
+                                    / "src"
+                                    / "fates"
+                                    / "tools"
+                                    / "modify_fates_paramfile.py"
+                                ),
+                                "--fin",
+                                str(fates_param_path),
+                                "--fout",
+                                str(fates_param_path),
+                                "--O",
+                                "--pft",
+                                str(idx + 1),
+                                "--var",
+                                fates_param,
+                                "--value",
+                                value.strip(),
+                            ],
+                            None,
+                            schemas.CaseStatus.FATES_PARAMS_UPDATED,
+                        )
+
                 (_, output) = tempfile.mkstemp()
                 run_cmd(
                     case,
