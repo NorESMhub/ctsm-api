@@ -11,11 +11,12 @@ from app.core import settings
 from app.utils.dependencies import check_dependencies
 from app.utils.logger import logger
 
-try:
-    check_dependencies()
-except Exception as e:
-    logger.error(e)
-    exit(1)
+if not settings.SKIP_CTSM_CHECKS:
+    try:
+        check_dependencies()
+    except Exception as e:
+        logger.error(e)
+        exit(1)
 
 app = FastAPI(
     title="CTSM API",

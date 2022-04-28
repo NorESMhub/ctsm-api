@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     VARIABLES_CONFIG_PATH: Path = Field(VARIABLES_CONFIG_PATH, const=True)
 
     # CTSM settings
+    SKIP_CTSM_CHECKS: bool = False
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
     MACHINE_NAME: str = "container"

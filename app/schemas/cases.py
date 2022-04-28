@@ -49,6 +49,7 @@ class CaseVariableDescription(BaseModel):
 
 class CaseVariableConfig(BaseModel):
     name: str
+    label: Optional[str]
     category: VariableCategory
     type: VariableType
     description: Optional[CaseVariableDescription]

@@ -15,6 +15,7 @@ fi
 cat >>"$HOME"/.bashrc <<EOF
 
 export USER="$USER"
+export PYTHONPATH=/ctsm-api
 export CIME_MACHINE=container
 export MPICC=mpicc
 export MPIFC=mpif90
@@ -25,6 +26,7 @@ EOF
 
 export USER=$USER
 export HOME=$HOME
+export PYTHONPATH=/ctsm-api
 export CIME_MACHINE=container
 export MPICC=mpicc
 export MPIFC=mpif90
