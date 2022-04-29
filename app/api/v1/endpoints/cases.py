@@ -21,7 +21,7 @@ def get_case_allowed_vars() -> Any:
     return schemas.CaseVariableConfig.get_variables_config()
 
 
-@router.get("/", response_model=List[schemas.CaseDB])
+@router.get("/", response_model=List[schemas.CaseBase])
 def get_cases(
     db: Session = Depends(get_db),
 ) -> Any:

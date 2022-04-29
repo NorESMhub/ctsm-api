@@ -1,5 +1,3 @@
-import hashlib
-import json
 import os
 import shutil
 from typing import Any, Dict, Optional, Union
@@ -13,34 +11,13 @@ from app.tasks.celery_app import celery_app
 
 
 class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpdate]):
-    @staticmethod
-    def get_case_id(obj_in: schemas.CaseDB) -> str:
-        """
-        Case id is a hash of the compset, res, variables, data_url, driver, and ctsm_tag.
-        This value is also used as the case path under `resources/cases/`.
-        """
-        hash_parts = "_".join(
-            [
-                obj_in.compset,
-                obj_in.res,
-                json.dumps(list(map(lambda v: v.dict(), obj_in.variables))),
-                obj_in.data_url,
-                obj_in.driver,
-                obj_in.ctsm_tag,
-            ]
-        )
-        case_id = bytes(hash_parts.encode("utf-8"))
-        return hashlib.md5(case_id).hexdigest()
-
     def create(
         self, db: Session, *, obj_in: Union[schemas.CaseBase, Dict[str, Any]]
     ) -> models.CaseModel:
         data = schemas.CaseCreateDB(
-            **(obj_in.dict() if isinstance(obj_in, schemas.CaseBase) else obj_in),
-            id="",
-            ctsm_tag=settings.CTSM_TAG,
+            **(obj_in.dict() if isinstance(obj_in, schemas.CaseBase) else obj_in)
         )
-        case_id = self.get_case_id(data)
+        case_id = data.id
         existing_case = self.get(db, id=case_id)
 
         if existing_case:
@@ -49,10 +26,6 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
 
             self.remove(db, id=case_id)
 
-        data.id = case_id
-        data.env = {
-            "CESMDATAROOT": str(settings.DATA_ROOT / case_id),
-        }
         new_case = super().create(db, obj_in=data)
         task = tasks.create_case.delay(new_case)
         return self.update(db, db_obj=new_case, obj_in={"create_task_id": task.id})

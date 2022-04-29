@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
 import requests
 
@@ -17,18 +17,6 @@ from app.db.session import SessionLocal
 from app.utils.logger import logger
 
 from .celery_app import celery_app
-
-
-def to_namelist_value(
-    value: Union[int, float, str, bool], value_type: schemas.VariableType
-) -> str:
-    match value_type:
-        case schemas.VariableType.char | schemas.VariableType.date:
-            return f"'{value}'"
-        case schemas.VariableType.integer | schemas.VariableType.float:
-            return str(value)
-        case schemas.VariableType.logical:
-            return ".true." if value else ".false."
 
 
 def run_cmd(
@@ -109,7 +97,7 @@ def create_case(case: models.CaseModel) -> str:
         xml_change_flags: List[str] = []
 
         fates_indices: Optional[str] = None
-        fates_param_path: Optional[Path] = None
+        fates_param_path: Optional[str] = None
         fates_params: List[Tuple[str, schemas.VariableValue]] = []
 
         for variable_dict in case.variables:
@@ -120,9 +108,6 @@ def create_case(case: models.CaseModel) -> str:
                 if isinstance(variable.value, list)
                 else variable.value
             )
-            if variable.append_input_path:
-                # TODO Should inputdata be parameterized?
-                value = cesm_data_root / "inputdata" / value
 
             if variable.name == "included_pft_indices":
                 fates_indices = value
@@ -131,11 +116,9 @@ def create_case(case: models.CaseModel) -> str:
                     xml_change_flags.append(f"{variable.name}={value}")
                 elif variable.category == "user_nl_clm":
                     with open(case_path / "user_nl_clm", "a") as f:
-                        f.write(
-                            f"{variable.name} = {to_namelist_value(value, variable.type)}\n"
-                        )
+                        f.write(f"{variable.name} = {value}\n")
                     if variable.name == "fates_paramfile":
-                        fates_param_path = value
+                        fates_param_path = value[1:-1]
                 elif variable.category == "fates_param":
                     fates_params.append((variable.name, value))
 
@@ -165,9 +148,9 @@ def create_case(case: models.CaseModel) -> str:
                                     / "modify_fates_paramfile.py"
                                 ),
                                 "--fin",
-                                str(fates_param_path),
+                                fates_param_path,
                                 "--fout",
-                                str(fates_param_path),
+                                fates_param_path,
                                 "--O",
                                 "--pft",
                                 str(idx + 1),

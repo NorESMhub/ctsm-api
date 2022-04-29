@@ -1,10 +1,13 @@
+import hashlib
+import json
 import re
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
-from typing import Dict, List, Optional, Union, cast
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union, cast
 
-from pydantic import BaseModel, parse_file_as, validator
+from pydantic import BaseModel, parse_file_as, root_validator
 
 from app import models
 from app.core import settings
@@ -56,6 +59,10 @@ class CaseVariableConfig(BaseModel):
     readonly: bool = False
     hidden: Optional[bool] = False
     allow_multiple: bool = False
+    # count_depends_on refers to the name of another variable,
+    # and only works for a parent variable with multiple values.
+    # If this is set, then it expects a value for each entry in the parent variable.
+    count_depends_on: Optional[str] = None
     validation: Optional[VariableValidation]
     default: Optional[VariableValue]
     append_input_path = False
@@ -77,11 +84,9 @@ class CaseVariable(BaseModel):
     name: str
     value: VariableValue
 
-    # category, type, and append_input_path are populated by CaseBase variables validator.
+    # The following are populated by CaseBase variables validator.
     # All other schemas that use this class should use CaseBase for validation.
     category: Optional[VariableCategory] = None
-    type: Optional[VariableType] = None
-    append_input_path = False
 
     class Config:
         smart_union = True
@@ -108,6 +113,12 @@ class CaseStatus(str, Enum):
 
 
 class CaseBase(BaseModel):
+    id: str = ""
+    ctsm_tag: str = settings.CTSM_TAG
+    status: CaseStatus = CaseStatus.INITIALISED
+    date_created: datetime = datetime.now()
+    create_task_id: Optional[str] = None
+    run_task_id: Optional[str] = None
     compset: str
     res: str
     variables: List[CaseVariable] = []
@@ -117,6 +128,7 @@ class CaseBase(BaseModel):
     data_url: str
 
     class Config:
+        orm_mode = True
         schema_extra = {
             "example": {
                 "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
@@ -130,148 +142,224 @@ class CaseBase(BaseModel):
             }
         }
 
-    @validator("variables", always=True)
-    def validate_variables(cls, variables: List[CaseVariable]) -> List[CaseVariable]:
-        variables_config = CaseVariableConfig.get_variables_config()
-        validated_variables = []
-        errors = None
+    @staticmethod
+    def generate_id(
+        compset: str,
+        res: str,
+        variables: List[CaseVariable],
+        data_url: str,
+        driver: CTSMDriver,
+        ctsm_tag: str,
+    ) -> str:
+        """
+        Case id is a hash of the given arguments.
+        This value is also used as the case path under `resources/cases/`.
+        """
+        hash_parts = "_".join(
+            [
+                compset,
+                res,
+                json.dumps(list(map(lambda v: v.dict(), variables))),
+                data_url,
+                driver,
+                ctsm_tag,
+            ]
+        )
+        case_id = bytes(hash_parts.encode("utf-8"))
+        return hashlib.md5(case_id).hexdigest()
 
-        for variable in variables:
-            variable_config = next(
-                filter(lambda config: config.name == variable.name, variables_config),
-                None,
-            )
+    @staticmethod
+    def to_namelist_value(
+        variable: CaseVariableConfig, value: Union[int, float, str, bool]
+    ) -> str:
+        match variable.type:
+            case VariableType.char | VariableType.date:
+                if variable.allow_multiple:
+                    assert isinstance(value, str)
+                    return ",".join(
+                        list(map(lambda v: f"'{v.strip()}'", value.split(",")))
+                    )
+                return f"'{value}'"
+            case VariableType.integer | VariableType.float:
+                return str(value)
+            case VariableType.logical:
+                return ".true." if value else ".false."
 
-            if not variable_config:
-                continue
+    @root_validator
+    def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if not values["id"]:
+            variables = values["variables"]
+            variables_config = CaseVariableConfig.get_variables_config()
+            validated_variables = []
+            errors = None
 
-            value = variable.value
-
-            if variable_config.name == "included_pft_indices":
-                fates_indices = cast(
-                    List[str], value.split(",") if isinstance(value, str) else value
+            for variable in variables:
+                variable_config = next(
+                    filter(
+                        lambda config: config.name == variable.name, variables_config
+                    ),
+                    None,
                 )
-                try:
-                    value = [int(index.strip()) for index in fates_indices]
-                except ValueError:
-                    errors = "Invalid fates index: {}".format(value)
+
+                if not variable_config:
                     continue
 
-            if variable_config.allow_multiple:
-                if not isinstance(value, list):
-                    value = [value]
-            else:
-                if isinstance(value, list):
-                    if len(value) > 1:
-                        errors = f"Variable {variable.name} is not allowed to have multiple values."
+                value = variable.value
+
+                if variable_config.name == "included_pft_indices":
+                    fates_indices = cast(
+                        List[str], value.split(",") if isinstance(value, str) else value
+                    )
+                    try:
+                        value = [int(index.strip()) for index in fates_indices]
+                    except ValueError:
+                        errors = "Invalid fates index: {}".format(value)
                         continue
+
+                if variable_config.allow_multiple:
+                    if not isinstance(value, list):
+                        value = [value]
                 else:
-                    value = [value]
-
-            assert isinstance(value, list)
-
-            validated_values = []
-            for v in value:
-                validated_value: Optional[Union[int, float, str, bool]] = None
-                if variable_config.type == "char" or variable_config.type == "date":
-                    try:
-                        validated_value = str(v)
-                    except ValueError:
-                        errors = f"Variable {variable.name} is not valid string."
-                        continue
-                elif variable_config.type == "integer":
-                    try:
-                        validated_value = int(v)
-                    except ValueError:
-                        errors = f"Variable {variable.name} is not valid integer"
-                        continue
-                elif variable_config.type == "float":
-                    try:
-                        validated_value = float(v)
-                    except ValueError:
-                        errors = f"Variable {variable.name} is not valid float"
-                        continue
-                elif variable_config.type == "logical":
-                    try:
-                        validated_value = bool(v)
-                    except ValueError:
-                        errors = f"Variable {variable.name} is not valid boolean"
-                        continue
-
-                if validated_value is None:
-                    errors = f"Variable {variable.name} is not valid."
-                    continue
-
-                if variable_config.validation:
-                    if variable_config.validation.choices:
-                        if validated_value not in variable_config.validation.choices:
-                            errors = f"{variable.value} is not a valid choice for {variable.name}."
+                    if isinstance(value, list):
+                        if len(value) > 1:
+                            errors = f"Variable {variable.name} is not allowed to have multiple values."
                             continue
                     else:
-                        if variable_config.validation.min:
-                            if (
-                                type(validated_value) != int
-                                or type(validated_value) != float
-                                or validated_value < variable_config.validation.min
-                            ):
-                                errors = f"{variable.value} is less than minimum value for {variable.name}."
-                                continue
-                        if variable_config.validation.max:
-                            if (
-                                type(validated_value) != int
-                                or type(validated_value) != float
-                                or validated_value > variable_config.validation.max
-                            ):
-                                errors = f"{variable.value} is greater than maximum value for {variable.name}."
-                                continue
-                        if variable_config.validation.pattern:
-                            if type(validated_value) != str or not re.match(
-                                variable_config.validation.pattern, validated_value
-                            ):
-                                errors = f"{variable.value} does not match pattern for {variable.name}."
-                                continue
+                        value = [value]
 
-                validated_values.append(validated_value)
+                assert isinstance(value, list)
 
-            variable.value = (
-                validated_values
-                if variable_config.allow_multiple
-                else validated_values[0]
+                validated_values = []
+                for v in value:
+                    validated_value: Optional[Union[int, float, str, bool]] = None
+                    if variable_config.type == "char" or variable_config.type == "date":
+                        try:
+                            validated_value = str(v)
+                        except ValueError:
+                            errors = f"Variable {variable.name} is not valid string."
+                            continue
+                    elif variable_config.type == "integer":
+                        try:
+                            validated_value = int(v)
+                        except ValueError:
+                            errors = f"Variable {variable.name} is not valid integer"
+                            continue
+                    elif variable_config.type == "float":
+                        try:
+                            validated_value = float(v)
+                        except ValueError:
+                            errors = f"Variable {variable.name} is not valid float"
+                            continue
+                    elif variable_config.type == "logical":
+                        try:
+                            validated_value = bool(v)
+                        except ValueError:
+                            errors = f"Variable {variable.name} is not valid boolean"
+                            continue
+
+                    if validated_value is None:
+                        errors = f"Variable {variable.name} is not valid."
+                        continue
+
+                    if variable_config.validation:
+                        if variable_config.validation.choices:
+                            if (
+                                validated_value
+                                not in variable_config.validation.choices
+                            ):
+                                errors = f"{variable.value} is not a valid choice for {variable.name}."
+                                continue
+                        else:
+                            if variable_config.validation.min:
+                                if (
+                                    type(validated_value) != int
+                                    or type(validated_value) != float
+                                    or validated_value < variable_config.validation.min
+                                ):
+                                    errors = f"{variable.value} is less than minimum value for {variable.name}."
+                                    continue
+                            if variable_config.validation.max:
+                                if (
+                                    type(validated_value) != int
+                                    or type(validated_value) != float
+                                    or validated_value > variable_config.validation.max
+                                ):
+                                    errors = f"{variable.value} is greater than maximum value for {variable.name}."
+                                    continue
+                            if variable_config.validation.pattern:
+                                if type(validated_value) != str or not re.match(
+                                    variable_config.validation.pattern, validated_value
+                                ):
+                                    errors = f"{variable.value} does not match pattern for {variable.name}."
+                                    continue
+
+                    if variable_config.category == "user_nl_clm":
+                        validated_value = cls.to_namelist_value(
+                            variable_config, validated_value
+                        )
+
+                    validated_values.append(validated_value)
+
+                variable.value = (
+                    validated_values
+                    if variable_config.allow_multiple
+                    else validated_values[0]
+                )
+                variable.category = variable_config.category
+                validated_variables.append(variable)
+
+            if errors:
+                raise ValueError(errors)
+
+            validated_variables.sort(key=lambda v: v.name)
+
+            values["variables"] = validated_variables
+
+            values["ctsm_tag"] = settings.CTSM_TAG
+
+            values["id"] = cls.generate_id(
+                values["compset"],
+                values["res"],
+                validated_variables,
+                values["data_url"],
+                values["driver"],
+                values["ctsm_tag"],
             )
-            variable.category = variable_config.category
-            variable.type = variable_config.type
-            variable.append_input_path = variable_config.append_input_path
-            validated_variables.append(variable)
 
-        if errors:
-            raise ValueError(errors)
+            cesm_data_root = str(settings.DATA_ROOT / values["id"])
+            values["env"] = {"CESMDATAROOT": cesm_data_root}
 
-        validated_variables.sort(key=lambda v: v.name)
+            for idx, variable in enumerate(values["variables"]):
+                variable_config = next(
+                    filter(
+                        lambda config: config.name == variable.name, variables_config
+                    ),
+                )
 
-        return validated_variables
+                if variable_config.append_input_path:
+                    if variable_config.category == "user_nl_clm":
+                        values["variables"][
+                            idx
+                        ].value = (
+                            f"'{str(cesm_data_root / Path(variable.value[1:-1]))}'"
+                        )
+                    else:
+                        values["variables"][idx].value = str(
+                            cesm_data_root / Path(variable.value)
+                        )
+
+        return values
 
 
-class CaseDB(CaseBase):
-    id: str
-    ctsm_tag: str
-    status: CaseStatus = CaseStatus.INITIALISED
-    date_created: datetime = datetime.now()
-    create_task_id: Optional[str] = None
-    run_task_id: Optional[str] = None
-
-    class Config:
-        orm_mode = True
-
-
-class CaseCreateDB(CaseDB):
+class CaseCreateDB(CaseBase):
     pass
 
 
-class CaseUpdate(CaseDB):
+class CaseUpdate(CaseBase):
     pass
 
 
-class CaseWithTaskInfo(CaseDB):
+class CaseWithTaskInfo(CaseBase):
     create_task: Task
     run_task: Task
 
@@ -293,4 +381,4 @@ class CaseWithTaskInfo(CaseDB):
                 }
             tasks[task_id_type[:-3]] = task_dict
 
-        return CaseWithTaskInfo(**CaseDB.from_orm(case).dict(), **tasks)
+        return CaseWithTaskInfo(**CaseBase.from_orm(case).dict(), **tasks)

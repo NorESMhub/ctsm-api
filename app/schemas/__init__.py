@@ -1,7 +1,6 @@
 from .cases import (
     CaseBase,
     CaseCreateDB,
-    CaseDB,
     CaseStatus,
     CaseUpdate,
     CaseVariable,
