@@ -41,7 +41,7 @@ jobs:
           BUILDNUMBER: ${{ github.run_number }}
           GITSHA1: ${{ github.sha }}
         with:
-          name: ka7eh/ctsm-api
+          name: NorESMhub/ctsm-api
           tags: "${{ env.TAGS }}"
           buildargs: BRANCH,BUILDNUMBER,GITSHA1
           dockerfile: docker/Dockerfile
