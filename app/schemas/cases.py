@@ -79,14 +79,22 @@ class CaseVariableConfig(BaseModel):
             else []
         )
 
+    @classmethod
+    @lru_cache()
+    def get_variable_config(cls, variable_name: str) -> Optional["CaseVariableConfig"]:
+        return next(
+            (
+                variable_config
+                for variable_config in cls.get_variables_config()
+                if variable_config.name == variable_name
+            ),
+            None,
+        )
+
 
 class CaseVariable(BaseModel):
     name: str
     value: VariableValue
-
-    # The following are populated by CaseBase variables validator.
-    # All other schemas that use this class should use CaseBase for validation.
-    category: Optional[VariableCategory] = None
 
     class Config:
         smart_union = True
@@ -168,38 +176,15 @@ class CaseBase(BaseModel):
         case_id = bytes(hash_parts.encode("utf-8"))
         return hashlib.md5(case_id).hexdigest()
 
-    @staticmethod
-    def to_namelist_value(
-        variable: CaseVariableConfig, value: Union[int, float, str, bool]
-    ) -> str:
-        match variable.type:
-            case VariableType.char | VariableType.date:
-                if variable.allow_multiple:
-                    assert isinstance(value, str)
-                    return ",".join(
-                        list(map(lambda v: f"'{v.strip()}'", value.split(",")))
-                    )
-                return f"'{value}'"
-            case VariableType.integer | VariableType.float:
-                return str(value)
-            case VariableType.logical:
-                return ".true." if value else ".false."
-
     @root_validator
     def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         if not values["id"]:
             variables = values["variables"]
-            variables_config = CaseVariableConfig.get_variables_config()
             validated_variables = []
             errors = None
 
             for variable in variables:
-                variable_config = next(
-                    filter(
-                        lambda config: config.name == variable.name, variables_config
-                    ),
-                    None,
-                )
+                variable_config = CaseVariableConfig.get_variable_config(variable.name)
 
                 if not variable_config:
                     continue
@@ -293,11 +278,6 @@ class CaseBase(BaseModel):
                                     errors = f"{variable.value} does not match pattern for {variable.name}."
                                     continue
 
-                    if variable_config.category == "user_nl_clm":
-                        validated_value = cls.to_namelist_value(
-                            variable_config, validated_value
-                        )
-
                     validated_values.append(validated_value)
 
                 variable.value = (
@@ -305,7 +285,6 @@ class CaseBase(BaseModel):
                     if variable_config.allow_multiple
                     else validated_values[0]
                 )
-                variable.category = variable_config.category
                 validated_variables.append(variable)
 
             if errors:
@@ -330,23 +309,12 @@ class CaseBase(BaseModel):
             values["env"] = {"CESMDATAROOT": cesm_data_root}
 
             for idx, variable in enumerate(values["variables"]):
-                variable_config = next(
-                    filter(
-                        lambda config: config.name == variable.name, variables_config
-                    ),
-                )
+                variable_config = CaseVariableConfig.get_variable_config(variable.name)
 
-                if variable_config.append_input_path:
-                    if variable_config.category == "user_nl_clm":
-                        values["variables"][
-                            idx
-                        ].value = (
-                            f"'{str(cesm_data_root / Path(variable.value[1:-1]))}'"
-                        )
-                    else:
-                        values["variables"][idx].value = str(
-                            cesm_data_root / Path(variable.value)
-                        )
+                if variable_config and variable_config.append_input_path:
+                    values["variables"][idx].value = str(
+                        cesm_data_root / Path(variable.value)
+                    )
 
         return values
 

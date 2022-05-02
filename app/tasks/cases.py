@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 import requests
 
@@ -17,6 +17,21 @@ from app.db.session import SessionLocal
 from app.utils.logger import logger
 
 from .celery_app import celery_app
+
+
+def to_namelist_value(
+    variable_config: schemas.CaseVariableConfig, value: Union[int, float, str, bool]
+) -> str:
+    match variable_config.type:
+        case schemas.VariableType.char | schemas.VariableType.date:
+            if variable_config.allow_multiple:
+                assert isinstance(value, str)
+                return ",".join(list(map(lambda v: f"'{v.strip()}'", value.split(","))))
+            return f"'{value}'"
+        case schemas.VariableType.integer | schemas.VariableType.float:
+            return str(value)
+        case schemas.VariableType.logical:
+            return ".true." if value else ".false."
 
 
 def run_cmd(
@@ -103,6 +118,9 @@ def create_case(case: models.CaseModel) -> str:
         for variable_dict in case.variables:
             assert isinstance(variable_dict, dict)
             variable = schemas.CaseVariable(**variable_dict)
+            variable_config = schemas.CaseVariableConfig.get_variable_config(
+                variable.name
+            )
             value = (
                 ",".join(map(lambda v: str(v), variable.value))
                 if isinstance(variable.value, list)
@@ -112,14 +130,16 @@ def create_case(case: models.CaseModel) -> str:
             if variable.name == "included_pft_indices":
                 fates_indices = value
             else:
-                if variable.category == "ctsm_xml":
+                if variable_config.category == "ctsm_xml":
                     xml_change_flags.append(f"{variable.name}={value}")
-                elif variable.category == "user_nl_clm":
+                elif variable_config.category == "user_nl_clm":
                     with open(case_path / "user_nl_clm", "a") as f:
-                        f.write(f"{variable.name} = {value}\n")
+                        f.write(
+                            f"{variable.name} = {to_namelist_value(variable_config, value)}\n"
+                        )
                     if variable.name == "fates_paramfile":
-                        fates_param_path = value[1:-1]
-                elif variable.category == "fates_param":
+                        fates_param_path = value
+                elif variable_config.category == "fates_param":
                     fates_params.append((variable.name, value))
 
         if xml_change_flags:

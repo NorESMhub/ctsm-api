@@ -14,9 +14,9 @@ router = APIRouter()
 
 # This must come before /{case_id} otherwise it will be handled by get_case.
 @router.get("/variables", response_model=List[schemas.CaseVariableConfig])
-def get_case_allowed_vars() -> Any:
+def get_case_variables_config() -> Any:
     """
-    Get the list of CTSM variables config that can be changed by user.
+    Get the list of CTSM variables config.
     """
     return schemas.CaseVariableConfig.get_variables_config()
 
