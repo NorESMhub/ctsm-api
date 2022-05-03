@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    image: ghcr.io/NorESMhub/ctsm-api:${VERSION:-latest}
+    image: ghcr.io/noresmhub/ctsm-api:${VERSION:-latest}
     restart: unless-stopped
     entrypoint: /ctsm-api/docker/entrypoint_api.sh
     env_file:
@@ -20,7 +20,7 @@ services:
       - ./resources:/ctsm-api/resources
 
   tasks:
-    image: ghcr.io/NorESMhub/ctsm-api:${VERSION:-latest}
+    image: ghcr.io/noresmhub/ctsm-api:${VERSION:-latest}
     restart: unless-stopped
     entrypoint: /ctsm-api/docker/entrypoint_tasks.sh
     env_file:

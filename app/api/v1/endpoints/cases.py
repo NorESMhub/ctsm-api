@@ -12,6 +12,11 @@ from app.db.session import get_db
 router = APIRouter()
 
 
+@router.get("/ctsm-info")
+def get_ctsm_info() -> Any:
+    return {"model": settings.CTSM_REPO, "version": settings.CTSM_TAG}
+
+
 # This must come before /{case_id} otherwise it will be handled by get_case.
 @router.get("/variables", response_model=List[schemas.CaseVariableConfig])
 def get_case_variables_config() -> Any:
