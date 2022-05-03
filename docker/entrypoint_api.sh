@@ -8,7 +8,7 @@ sudo -s -E -u "$USER" bash <<EOF
 
 cd /ctsm-api
 
-if [[ $SKIP_CTSM_CHECKS != 1 ]]; then
+if [[ "$SKIP_CTSM_CHECKS" != 1 ]]; then
   ./scripts/setup_ctsm.sh
 fi
 
