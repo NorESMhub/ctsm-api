@@ -59,6 +59,7 @@ class CaseVariableConfig(BaseModel):
     readonly: bool = False
     hidden: Optional[bool] = False
     allow_multiple: bool = False
+    allow_custom: bool = False
     # count_depends_on refers to the name of another variable,
     # and only works for a parent variable with multiple values.
     # If this is set, then it expects a value for each entry in the parent variable.
@@ -247,7 +248,10 @@ class CaseBase(BaseModel):
                         continue
 
                     if variable_config.validation:
-                        if variable_config.validation.choices:
+                        if (
+                            not variable_config.allow_custom
+                            and variable_config.validation.choices
+                        ):
                             if (
                                 validated_value
                                 not in variable_config.validation.choices
