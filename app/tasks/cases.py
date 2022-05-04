@@ -15,6 +15,7 @@ from app import crud, models, schemas
 from app.core import settings
 from app.db.session import SessionLocal
 from app.utils.logger import logger
+from app.utils.type_casting import to_bool
 
 from .celery_app import celery_app
 
@@ -22,16 +23,25 @@ from .celery_app import celery_app
 def to_namelist_value(
     variable_config: schemas.CaseVariableConfig, value: Union[int, float, str, bool]
 ) -> str:
-    match variable_config.type:
-        case schemas.VariableType.char | schemas.VariableType.date:
-            if variable_config.allow_multiple:
-                assert isinstance(value, str)
-                return ",".join(list(map(lambda v: f"'{v.strip()}'", value.split(","))))
-            return f"'{value}'"
-        case schemas.VariableType.integer | schemas.VariableType.float:
-            return str(value)
-        case schemas.VariableType.logical:
-            return ".true." if value else ".false."
+    if variable_config.allow_multiple:
+        assert isinstance(value, str)
+        value_list: List[Union[int, float, str, bool]] = list(
+            map(lambda v: v.strip(), value.split(","))
+        )
+    else:
+        value_list = [value]
+
+    namelist_value_list = []
+    for v in value_list:
+        match variable_config.type:
+            case schemas.VariableType.char | schemas.VariableType.date:
+                namelist_value_list.append(f"'{v}'")
+            case schemas.VariableType.integer | schemas.VariableType.float:
+                namelist_value_list.append(str(v))
+            case schemas.VariableType.logical:
+                namelist_value_list.append(".true." if to_bool(v) else ".false.")
+
+    return ",".join(namelist_value_list)
 
 
 def run_cmd(
@@ -132,7 +142,10 @@ def create_case(case: models.CaseModel) -> str:
             else:
                 if variable_config.category == "ctsm_xml":
                     xml_change_flags.append(f"{variable.name}={value}")
-                elif variable_config.category == "user_nl_clm":
+                elif (
+                    variable_config.category == "user_nl_clm"
+                    or variable_config.category == "user_nl_clm_history_file"
+                ):
                     with open(case_path / "user_nl_clm", "a") as f:
                         f.write(
                             f"{variable.name} = {to_namelist_value(variable_config, value)}\n"

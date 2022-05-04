@@ -33,6 +33,7 @@ VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 class VariableCategory(str, Enum):
     ctsm_xml = "ctsm_xml"
     user_nl_clm = "user_nl_clm"
+    user_nl_clm_history_file = "user_nl_clm_history_file"
     fates = "fates"
     fates_param = "fates_param"
 
@@ -41,6 +42,7 @@ class VariableValidation(BaseModel):
     min: Optional[Union[int, float]]
     max: Optional[Union[int, float]]
     pattern: Optional[str]
+    pattern_error: Optional[str]
     choices: Optional[List[Union[int, float, str]]]
 
 
@@ -279,7 +281,12 @@ class CaseBase(BaseModel):
                                 if type(validated_value) != str or not re.match(
                                     variable_config.validation.pattern, validated_value
                                 ):
-                                    errors = f"{variable.value} does not match pattern for {variable.name}."
+                                    if variable_config.validation.pattern_error:
+                                        errors = (
+                                            variable_config.validation.pattern_error
+                                        )
+                                    else:
+                                        errors = f"{variable.value} does not match pattern for {variable.name}."
                                     continue
 
                     validated_values.append(validated_value)

@@ -1,7 +1,7 @@
 from typing import Union
 
 
-def to_bool(v: Union[str, int, bool]) -> bool:
+def to_bool(v: Union[str, int, float, bool]) -> bool:
     """
     Converts the following values to True:
     - integer numbers > 0
@@ -9,11 +9,11 @@ def to_bool(v: Union[str, int, bool]) -> bool:
     - Booleans True
     """
     try:
-        v = int(v)
+        v = float(v)
     except ValueError:
         pass
 
-    if isinstance(v, int):
+    if isinstance(v, float):
         return v != 0
 
     if isinstance(v, str):
