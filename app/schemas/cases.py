@@ -4,7 +4,6 @@ import re
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 from pydantic import BaseModel, parse_file_as, root_validator
@@ -323,14 +322,6 @@ class CaseBase(BaseModel):
 
             cesm_data_root = str(settings.DATA_ROOT / values["id"])
             values["env"] = {"CESMDATAROOT": cesm_data_root}
-
-            for idx, variable in enumerate(values["variables"]):
-                variable_config = CaseVariableConfig.get_variable_config(variable.name)
-
-                if variable_config and variable_config.append_input_path:
-                    values["variables"][idx].value = str(
-                        cesm_data_root / Path(variable.value)
-                    )
 
         return values
 

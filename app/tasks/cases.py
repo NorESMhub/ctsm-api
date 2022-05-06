@@ -137,6 +137,9 @@ def create_case(case: models.CaseModel) -> str:
                 else variable.value
             )
 
+            if variable_config and variable_config.append_input_path:
+                value = str(cesm_data_root / Path(value))
+
             if variable.name == "included_pft_indices":
                 fates_indices = value
             else:
