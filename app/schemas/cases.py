@@ -4,7 +4,6 @@ import re
 from datetime import datetime
 from enum import Enum
 from functools import lru_cache
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Union, cast
 
 from pydantic import BaseModel, parse_file_as, root_validator
@@ -38,12 +37,17 @@ class VariableCategory(str, Enum):
     fates_param = "fates_param"
 
 
+class VariableChoice(BaseModel):
+    value: VariableValue
+    label: str
+
+
 class VariableValidation(BaseModel):
     min: Optional[Union[int, float]]
     max: Optional[Union[int, float]]
     pattern: Optional[str]
     pattern_error: Optional[str]
-    choices: Optional[List[Union[int, float, str]]]
+    choices: Optional[List[VariableChoice]]
 
 
 class CaseVariableDescription(BaseModel):
@@ -62,12 +66,9 @@ class CaseVariableConfig(BaseModel):
     hidden: Optional[bool] = False
     allow_multiple: bool = False
     allow_custom: bool = False
-    # count_depends_on refers to the name of another variable,
-    # and only works for a parent variable with multiple values.
-    # If this is set, then it expects a value for each entry in the parent variable.
-    count_depends_on: Optional[str] = None
     validation: Optional[VariableValidation]
     default: Optional[VariableValue]
+    placeholder: Optional[str]
     append_input_path = False
 
     class Config:
@@ -254,9 +255,12 @@ class CaseBase(BaseModel):
                             not variable_config.allow_custom
                             and variable_config.validation.choices
                         ):
-                            if (
-                                validated_value
-                                not in variable_config.validation.choices
+                            if not next(
+                                filter(
+                                    lambda c: c.value == validated_value,
+                                    variable_config.validation.choices,
+                                ),
+                                None,
                             ):
                                 errors = f"{variable.value} is not a valid choice for {variable.name}."
                                 continue
@@ -318,14 +322,6 @@ class CaseBase(BaseModel):
 
             cesm_data_root = str(settings.DATA_ROOT / values["id"])
             values["env"] = {"CESMDATAROOT": cesm_data_root}
-
-            for idx, variable in enumerate(values["variables"]):
-                variable_config = CaseVariableConfig.get_variable_config(variable.name)
-
-                if variable_config and variable_config.append_input_path:
-                    values["variables"][idx].value = str(
-                        cesm_data_root / Path(variable.value)
-                    )
 
         return values
 
