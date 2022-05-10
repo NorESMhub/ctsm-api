@@ -2,39 +2,35 @@ import hashlib
 import json
 import re
 from datetime import datetime
-from enum import Enum
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Union, cast
 
 from pydantic import BaseModel, parse_file_as, root_validator
+from slugify import slugify
 
 from app import models
 from app.core import settings
 from app.tasks.celery_app import celery_app
 
+from .constants import CaseStatus, CTSMDriver, VariableCategory, VariableType
 from .tasks import Task
 
 
-class VariableType(str, Enum):
-    """The types are based on what is used in CTSM xml files,
-    except for date, which is char in yyyy-mm-dd format in CTSM."""
+class CTSMInfo(BaseModel):
+    model: str
+    version: str
+    drivers: List[CTSMDriver]
 
-    char = "char"
-    integer = "integer"
-    float = "float"
-    logical = "logical"
-    date = "date"
+    @staticmethod
+    def get_ctsm_info():
+        return CTSMInfo(
+            model=settings.CTSM_REPO,
+            version=settings.CTSM_TAG,
+            drivers=settings.CTSM_DRIVERS,
+        )
 
 
 VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
-
-
-class VariableCategory(str, Enum):
-    ctsm_xml = "ctsm_xml"
-    user_nl_clm = "user_nl_clm"
-    user_nl_clm_history_file = "user_nl_clm_history_file"
-    fates = "fates"
-    fates_param = "fates_param"
 
 
 class VariableChoice(BaseModel):
@@ -104,28 +100,9 @@ class CaseVariable(BaseModel):
         smart_union = True
 
 
-class CTSMDriver(str, Enum):
-    """The driver to use with CTSM create_newcase script."""
-
-    nuopc = "nuopc"
-    mct = "mct"
-
-
-class CaseStatus(str, Enum):
-    INITIALISED = "INITIALISED"
-    CREATED = "CREATED"
-    SETUP = "SETUP"
-    UPDATED = "UPDATED"
-    FATES_PARAMS_UPDATED = "FATES_PARAMS_UPDATED"
-    FATES_INDICES_SET = "FATES INDICES SET"
-    CONFIGURED = "CONFIGURED"
-    BUILDING = "BUILDING"
-    BUILT = "BUILT"
-    SUBMITTED = "SUBMITTED"
-
-
 class CaseBase(BaseModel):
     id: str = ""
+    name: str = ""
     ctsm_tag: str = settings.CTSM_TAG
     status: CaseStatus = CaseStatus.INITIALISED
     date_created: datetime = datetime.now()
@@ -320,8 +297,16 @@ class CaseBase(BaseModel):
                 values["ctsm_tag"],
             )
 
-            cesm_data_root = str(settings.DATA_ROOT / values["id"])
-            values["env"] = {"CESMDATAROOT": cesm_data_root}
+            if values["name"]:
+                case_folder_name = f"{values['id']}_{slugify(values['name'])}"
+            else:
+                case_folder_name = values["id"]
+
+            cesm_data_root = str(settings.DATA_ROOT / case_folder_name)
+            values["env"] = {
+                "CESMDATAROOT": cesm_data_root,
+                "CASE_FOLDER_NAME": case_folder_name,
+            }
 
         return values
 

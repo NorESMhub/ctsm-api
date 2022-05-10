@@ -7,6 +7,7 @@ from .cases import (
     CaseVariableConfig,
     CaseWithTaskInfo,
     CTSMDriver,
+    CTSMInfo,
     VariableCategory,
     VariableType,
     VariableValue,

@@ -64,6 +64,7 @@ def create_site_case(
         raise HTTPException(status_code=404, detail="Site not found")
 
     data = schemas.CaseBase(
+        name=site_case.case_name,
         compset=site.compset,
         res=site.res,
         variables=site_case.variables,

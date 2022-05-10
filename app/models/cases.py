@@ -11,6 +11,7 @@ class CaseModel(Base):
     # id is calculated from the case compset, res, variables,
     # data_url, driver, and ctsm_tag and used as the case path.
     id: str = Column(String(32), primary_key=True, index=True)
+    name: str = Column(String(300), nullable=True)
     compset: str = Column(String(300), nullable=False)
     res: str = Column(String(100), nullable=False)
     variables: Dict[str, Any] = Column(JSON(), nullable=False)
