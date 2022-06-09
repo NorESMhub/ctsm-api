@@ -12,9 +12,9 @@ from app.db.session import get_db
 router = APIRouter()
 
 
-@router.get("/ctsm-info")
+@router.get("/ctsm-info", response_model=schemas.CTSMInfo)
 def get_ctsm_info() -> Any:
-    return {"model": settings.CTSM_REPO, "version": settings.CTSM_TAG}
+    return schemas.CTSMInfo.get_ctsm_info()
 
 
 # This must come before /{case_id} otherwise it will be handled by get_case.
@@ -87,19 +87,28 @@ def delete_case(
 
 
 @router.get("/{case_id}/download")
-def download_case(case_id: str) -> Any:
+def download_case(case_id: str, db: Session = Depends(get_db)) -> Any:
     """
     Download a compressed tarball of the case with the given id.
     """
-    archive_name = settings.ARCHIVES_ROOT / f"{case_id}.zip"
+    case = crud.case.get(db, id=case_id)
+
+    if not case:
+        return None
+
+    case_folder_name = case.env["CASE_FOLDER_NAME"]
+
+    archive_name = settings.ARCHIVES_ROOT / f"{case_folder_name}.zip"
     if archive_name.exists():
         return FileResponse(
             archive_name,
-            headers={"Content-Disposition": f'attachment; filename="{case_id}.zip"'},
+            headers={
+                "Content-Disposition": f'attachment; filename="{case_folder_name}.zip"'
+            },
             media_type="application/zip",
         )
 
-    case_path = settings.CASES_ROOT / case_id
+    case_path = settings.CASES_ROOT / case_folder_name
 
     if not case_path.exists():
         raise HTTPException(status_code=404, detail="Case not found")
@@ -111,6 +120,8 @@ def download_case(case_id: str) -> Any:
 
     return FileResponse(
         archive_name,
-        headers={"Content-Disposition": f'attachment; filename="{case_id}.zip"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{case_folder_name}.zip"'
+        },
         media_type="application/zip",
     )

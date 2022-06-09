@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Union
 
 from pydantic import AnyHttpUrl, BaseSettings, Field, validator
 
+from app.schemas.constants import CTSMDriver
 from app.utils.type_casting import to_bool
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -68,6 +69,7 @@ class Settings(BaseSettings):
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
     MACHINE_NAME: str = "container"
+    CTSM_DRIVERS: List[CTSMDriver] = [CTSMDriver.mct, CTSMDriver.nuopc]
 
     class Config:
         env_file = PROJECT_ROOT / ".env"

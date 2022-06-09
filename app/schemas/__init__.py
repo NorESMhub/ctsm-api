@@ -7,9 +7,9 @@ from .cases import (
     CaseVariableConfig,
     CaseWithTaskInfo,
     CTSMDriver,
+    CTSMInfo,
     VariableCategory,
     VariableType,
-    VariableValue,
 )
 from .geojson import Feature, FeatureCollection, Point
 from .sites import (

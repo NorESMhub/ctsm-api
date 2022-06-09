@@ -20,6 +20,7 @@ class SiteProperties(BaseModel):
 
 class SiteCaseCreate(BaseModel):
     site_name: str
+    case_name: Optional[str]
     variables: List[CaseVariable] = []
     driver: CTSMDriver = CTSMDriver.mct
 

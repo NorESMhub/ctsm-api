@@ -60,6 +60,19 @@ RUN  wget -q https://parallel-netcdf.github.io/Release/pnetcdf-1.12.1.tar.gz && 
      make -j 2 install && \
      ldconfig
 
+RUN wget -q https://github.com/esmf-org/esmf/archive/refs/tags/ESMF_8_2_0.tar.gz && \
+    tar zxf ESMF_8_2_0.tar.gz && \
+    cd esmf-ESMF_8_2_0 && \
+    export ESMF_DIR='/tmp/sources/esmf-ESMF_8_2_0' && \
+    export ESMF_INSTALL_PREFIX='/usr/local' && \
+    export ESMF_LAPACK="netlib" && \
+    export ESMF_LAPACK_LIBS="-llapack -lblas" && \
+    export ESMF_LAPACK_LIBPATH="/usr/lib" && \
+    export ESMF_NETCDF="nc-config" && \
+    gmake && \
+    gmake install && \
+    ldconfig
+
 RUN rm -rf /tmp/sources
 
 RUN pip install --upgrade pip setuptools

@@ -1,5 +1,6 @@
 import os
 import shutil
+from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from sqlalchemy.orm import Session
@@ -31,15 +32,23 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
         return self.update(db, db_obj=new_case, obj_in={"create_task_id": task.id})
 
     def remove(self, db: Session, *, id: str) -> Optional[models.CaseModel]:  # type: ignore[override]
-        if (settings.CASES_ROOT / id).exists():
-            shutil.rmtree(settings.CASES_ROOT / id)
-        if (settings.ARCHIVES_ROOT / f"{id}.zip").exists():
-            os.remove(settings.ARCHIVES_ROOT / f"{id}.zip")
-        if (settings.DATA_ROOT / id).exists():
-            shutil.rmtree(settings.DATA_ROOT / id)
-
         existing_case = self.get(db, id=id)
+
         if existing_case:
+            case_path = settings.CASES_ROOT / existing_case.env["CASE_FOLDER_NAME"]
+            if case_path.exists():
+                shutil.rmtree(case_path)
+
+            archive_path = (
+                settings.ARCHIVES_ROOT / f"{existing_case.env['CASE_FOLDER_NAME']}.zip"
+            )
+            if archive_path.exists():
+                os.remove(archive_path)
+
+            cesm_data_root = Path(existing_case.env["CESMDATAROOT"])
+            if cesm_data_root.exists():
+                shutil.rmtree(cesm_data_root)
+
             if existing_case.create_task_id:
                 celery_app.AsyncResult(existing_case.create_task_id).forget()
             if existing_case.run_task_id:
