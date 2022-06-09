@@ -7,7 +7,7 @@ import tarfile
 import tempfile
 import time
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union, cast
 
 import requests
 
@@ -121,42 +121,37 @@ def create_case(case: models.CaseModel) -> str:
     if case.variables:
         xml_change_flags: List[str] = []
 
-        fates_indices: Optional[str] = None
-        fates_param_path: Optional[str] = None
-        fates_params: List[Tuple[str, schemas.VariableValue]] = []
-
         for variable_dict in case.variables:
             assert isinstance(variable_dict, dict)
             variable = schemas.CaseVariable(**variable_dict)
             variable_config = schemas.CaseVariableConfig.get_variable_config(
                 variable.name
             )
+
+            if not variable_config:
+                # This should only happen if an old case is being run with updated config
+                raise Exception(f"Variable {variable.name} is not supported")
+
             value = (
                 ",".join(map(lambda v: str(v), variable.value))
                 if isinstance(variable.value, list)
                 else variable.value
             )
 
-            if variable_config and variable_config.append_input_path:
+            if variable_config.append_input_path:
+                assert isinstance(value, str)
                 value = str(cesm_data_root / Path(value))
 
-            if variable.name == "included_pft_indices":
-                fates_indices = value
-            else:
-                if variable_config.category == "ctsm_xml":
-                    xml_change_flags.append(f"{variable.name}={value}")
-                elif (
-                    variable_config.category == "user_nl_clm"
-                    or variable_config.category == "user_nl_clm_history_file"
-                ):
-                    with open(case_path / "user_nl_clm", "a") as f:
-                        f.write(
-                            f"{variable.name} = {to_namelist_value(variable_config, value)}\n"
-                        )
-                    if variable.name == "fates_paramfile":
-                        fates_param_path = value
-                elif variable_config.category == "fates_param":
-                    fates_params.append((variable.name, value))
+            if variable_config.category == "ctsm_xml":
+                xml_change_flags.append(f"{variable.name}={value}")
+            elif (
+                variable_config.category == "user_nl_clm"
+                or variable_config.category == "user_nl_clm_history_file"
+            ):
+                with open(case_path / "user_nl_clm", "a") as f:
+                    f.write(
+                        f"{variable.name} = {to_namelist_value(variable_config, value)}\n"
+                    )
 
         if xml_change_flags:
             run_cmd(
@@ -166,11 +161,82 @@ def create_case(case: models.CaseModel) -> str:
                 schemas.CaseStatus.UPDATED,
             )
 
-        if fates_indices:
-            if fates_param_path:
-                for fates_param, value_list in fates_params:
-                    assert isinstance(value_list, str)
-                    for idx, value in enumerate(value_list.split(",")):
+    with SessionLocal() as db:
+        crud.case.update(
+            db,
+            db_obj=case,
+            obj_in={"status": schemas.CaseStatus.CONFIGURED},
+        )
+
+    return "Case is configured"
+
+
+@celery_app.task
+def run_case(case: models.CaseModel) -> str:
+    case_path = settings.CASES_ROOT / case.id
+
+    try:
+        cesm_data_root = Path(case.env["CESMDATAROOT"])
+    except KeyError:
+        raise Exception("CESMDATAROOT environment variable is not set")
+
+    run_cmd(case, ["./case.build"], case_path, schemas.CaseStatus.BUILT)
+
+    run_cmd(
+        case,
+        ["./check_input_data", "--download"],
+        case_path,
+        schemas.CaseStatus.INPUT_DATA_READY,
+    )
+
+    fates_indices_dict = next(
+        (v for v in case.variables if v["name"] == "included_pft_indices"), None
+    )
+    fates_param_path_dict = next(
+        filter(lambda v: v["name"] == "fates_paramfile", case.variables), None
+    )
+    if fates_indices_dict:
+        assert isinstance(fates_indices_dict, dict)
+        fates_indices = cast(
+            List[str], schemas.CaseVariable(**fates_indices_dict).value
+        )
+
+        if fates_param_path_dict:
+            assert isinstance(fates_param_path_dict, dict)
+            fates_param_path = schemas.CaseVariable(**fates_param_path_dict)
+
+            fates_paramfile_variable_config = (
+                schemas.CaseVariableConfig.get_variable_config("fates_paramfile")
+            )
+
+            if not fates_paramfile_variable_config:
+                # This should only happen if an old case is being run with updated config
+                raise Exception("Variable fates_paramfile is not supported")
+
+            fates_param_path_str = fates_param_path.value
+            assert isinstance(fates_param_path_str, str)
+
+            if fates_paramfile_variable_config.append_input_path:
+                fates_param_path_value = str(
+                    cesm_data_root / Path(fates_param_path_str)
+                )
+            else:
+                fates_param_path_value = fates_param_path_str
+
+            for variable_dict in case.variables:
+                assert isinstance(variable_dict, dict)
+                variable = schemas.CaseVariable(**variable_dict)
+                variable_config = schemas.CaseVariableConfig.get_variable_config(
+                    variable.name
+                )
+
+                if not variable_config:
+                    # This should only happen if an old case is being run with updated config
+                    raise Exception(f"Variable {variable.name} is not supported")
+
+                if variable_config.category == "fates_param":
+                    param_values = cast(List[int], variable.value)
+                    for idx, value in enumerate(param_values):
                         run_cmd(
                             case,
                             [
@@ -184,16 +250,16 @@ def create_case(case: models.CaseModel) -> str:
                                     / "modify_fates_paramfile.py"
                                 ),
                                 "--fin",
-                                fates_param_path,
+                                fates_param_path_value,
                                 "--fout",
-                                fates_param_path,
+                                fates_param_path_value,
                                 "--O",
                                 "--pft",
                                 str(idx + 1),
                                 "--var",
-                                fates_param,
+                                variable.name,
                                 "--value",
-                                value.strip(),
+                                str(value),
                             ],
                             None,
                             schemas.CaseStatus.FATES_PARAMS_UPDATED,
@@ -213,40 +279,20 @@ def create_case(case: models.CaseModel) -> str:
                             / "FatesPFTIndexSwapper.py"
                         ),
                         "--pft-indices",
-                        fates_indices,
+                        ",".join(fates_indices),
                         "--fin",
-                        str(fates_param_path),
+                        fates_param_path_value,
                         "--fout",
                         output,
                     ],
                     None,
                     schemas.CaseStatus.FATES_INDICES_SET,
                 )
-                shutil.move(output, fates_param_path)
-            else:
-                raise Exception("Could not find FATES param file")
+                shutil.move(output, fates_param_path_value)
+        else:
+            raise Exception("Could not find FATES param file")
 
-    with SessionLocal() as db:
-        crud.case.update(
-            db,
-            db_obj=case,
-            obj_in={"status": schemas.CaseStatus.CONFIGURED},
-        )
-
-    return "Case is configured"
-
-
-@celery_app.task
-def run_case(case: models.CaseModel) -> str:
-    case_path = settings.CASES_ROOT / case.id
-
-    cmds: List[Tuple[List[str], Optional[Path], schemas.CaseStatus]] = [
-        (["./case.build"], case_path, schemas.CaseStatus.BUILT),
-        (["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED),
-    ]
-
-    for cmd, cwd, status in cmds:
-        run_cmd(case, cmd, cwd, status)
+    run_cmd(case, ["./case.submit"], case_path, schemas.CaseStatus.SUBMITTED)
 
     with SessionLocal() as db:
         crud.case.update(

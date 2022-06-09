@@ -92,6 +92,10 @@ def download_case(case_id: str, db: Session = Depends(get_db)) -> Any:
     Download a compressed tarball of the case with the given id.
     """
     case = crud.case.get(db, id=case_id)
+
+    if not case:
+        return None
+
     case_folder_name = case.env["CASE_FOLDER_NAME"]
 
     archive_name = settings.ARCHIVES_ROOT / f"{case_folder_name}.zip"

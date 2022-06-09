@@ -1,4 +1,7 @@
 from enum import Enum
+from typing import List, Union
+
+VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 
 
 class VariableType(str, Enum):
@@ -37,6 +40,7 @@ class CaseStatus(str, Enum):
     CONFIGURED = "CONFIGURED"
     BUILDING = "BUILDING"
     BUILT = "BUILT"
+    INPUT_DATA_READY = "INPUT_DATA_READY"
     SUBMITTED = "SUBMITTED"
 
 

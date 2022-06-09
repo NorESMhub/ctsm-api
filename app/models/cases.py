@@ -1,8 +1,14 @@
-from typing import Any, Dict, Optional
+from typing import Dict, List, Optional, TypedDict
 
 from sqlalchemy import JSON, Column, String
 
 from app.db.base_class import Base
+from app.schemas.constants import VariableValue
+
+
+class CaseVariable(TypedDict):
+    name: str
+    value: VariableValue
 
 
 class CaseModel(Base):
@@ -14,7 +20,7 @@ class CaseModel(Base):
     name: str = Column(String(300), nullable=True)
     compset: str = Column(String(300), nullable=False)
     res: str = Column(String(100), nullable=False)
-    variables: Dict[str, Any] = Column(JSON(), nullable=False)
+    variables: List[CaseVariable] = Column(JSON(), nullable=False)
     fates_indices: Optional[str] = Column(String(300), nullable=True)
     data_url: str = Column(String(300), nullable=False)
     driver: str = Column(String(5), nullable=False)

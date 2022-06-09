@@ -3,17 +3,25 @@ import json
 import re
 from datetime import datetime
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 from pydantic import BaseModel, parse_file_as, root_validator
 from slugify import slugify
 
-from app import models
 from app.core import settings
 from app.tasks.celery_app import celery_app
 
-from .constants import CaseStatus, CTSMDriver, VariableCategory, VariableType
+from .constants import (
+    CaseStatus,
+    CTSMDriver,
+    VariableCategory,
+    VariableType,
+    VariableValue,
+)
 from .tasks import Task
+
+if TYPE_CHECKING:
+    from app.models import CaseModel
 
 
 class CTSMInfo(BaseModel):
@@ -22,15 +30,12 @@ class CTSMInfo(BaseModel):
     drivers: List[CTSMDriver]
 
     @staticmethod
-    def get_ctsm_info():
+    def get_ctsm_info() -> "CTSMInfo":
         return CTSMInfo(
             model=settings.CTSM_REPO,
             version=settings.CTSM_TAG,
             drivers=settings.CTSM_DRIVERS,
         )
-
-
-VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 
 
 class VariableChoice(BaseModel):
@@ -324,7 +329,7 @@ class CaseWithTaskInfo(CaseBase):
     run_task: Task
 
     @staticmethod
-    def get_case_with_task_info(case: models.CaseModel) -> Optional["CaseWithTaskInfo"]:
+    def get_case_with_task_info(case: "CaseModel") -> Optional["CaseWithTaskInfo"]:
         tasks = {}
         for task_id_type in ["create_task_id", "run_task_id"]:
             task_id = getattr(case, task_id_type)

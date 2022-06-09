@@ -10,7 +10,6 @@ from .cases import (
     CTSMInfo,
     VariableCategory,
     VariableType,
-    VariableValue,
 )
 from .geojson import Feature, FeatureCollection, Point
 from .sites import (
