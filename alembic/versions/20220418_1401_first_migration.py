@@ -21,6 +21,7 @@ def upgrade():
     op.create_table(
         "cases",
         sa.Column("id", sa.String(length=32), nullable=False),
+        sa.Column("name", sa.String(length=300), nullable=True),
         sa.Column("compset", sa.String(length=300), nullable=False),
         sa.Column("res", sa.String(length=100), nullable=False),
         sa.Column("variables", sa.JSON(), nullable=False),
