@@ -173,7 +173,7 @@ def create_case(case: models.CaseModel) -> str:
 
 @celery_app.task
 def run_case(case: models.CaseModel) -> str:
-    case_path = settings.CASES_ROOT / case.id
+    case_path = settings.CASES_ROOT / case.env["CASE_FOLDER_NAME"]
 
     try:
         cesm_data_root = Path(case.env["CESMDATAROOT"])
