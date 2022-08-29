@@ -170,6 +170,10 @@ class CaseBase(BaseModel):
             errors = None
 
             for variable in variables:
+                if variable.name == "user_nl_clm_extra":
+                    validated_variables.append(variable)
+                    continue
+
                 variable_config = CaseVariableConfig.get_variable_config(variable.name)
 
                 if not variable_config:
