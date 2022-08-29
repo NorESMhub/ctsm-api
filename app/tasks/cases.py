@@ -124,6 +124,12 @@ def create_case(case: models.CaseModel) -> str:
         for variable_dict in case.variables:
             assert isinstance(variable_dict, dict)
             variable = schemas.CaseVariable(**variable_dict)
+
+            if variable.name == "user_nl_clm_extra":
+                with open(case_path / "user_nl_clm", "a") as f:
+                    f.write(str(variable.value) + "\n")
+                continue
+
             variable_config = schemas.CaseVariableConfig.get_variable_config(
                 variable.name
             )

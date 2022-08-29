@@ -18,6 +18,7 @@ class VariableType(str, Enum):
 class VariableCategory(str, Enum):
     ctsm_xml = "ctsm_xml"
     user_nl_clm = "user_nl_clm"
+    user_nl_clm_extra = "user_nl_clm_extra"
     user_nl_clm_history_file = "user_nl_clm_history_file"
     fates = "fates"
     fates_param = "fates_param"
