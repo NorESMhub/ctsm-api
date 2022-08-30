@@ -232,6 +232,10 @@ def run_case(case: models.CaseModel) -> str:
             for variable_dict in case.variables:
                 assert isinstance(variable_dict, dict)
                 variable = schemas.CaseVariable(**variable_dict)
+
+                if variable.name == "user_nl_clm_extra":
+                    continue
+
                 variable_config = schemas.CaseVariableConfig.get_variable_config(
                     variable.name
                 )
