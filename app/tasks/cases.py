@@ -275,30 +275,30 @@ def run_case(case: models.CaseModel) -> str:
                             schemas.CaseStatus.FATES_PARAMS_UPDATED,
                         )
 
-                (_, output) = tempfile.mkstemp()
-                run_cmd(
-                    case,
-                    [
-                        str(
-                            settings.CTSM_ROOT
-                            / "components"
-                            / "clm"
-                            / "src"
-                            / "fates"
-                            / "tools"
-                            / "FatesPFTIndexSwapper.py"
-                        ),
-                        "--pft-indices",
-                        ",".join(fates_indices),
-                        "--fin",
-                        fates_param_path_value,
-                        "--fout",
-                        output,
-                    ],
-                    None,
-                    schemas.CaseStatus.FATES_INDICES_SET,
-                )
-                shutil.move(output, fates_param_path_value)
+            (_, output) = tempfile.mkstemp()
+            run_cmd(
+                case,
+                [
+                    str(
+                        settings.CTSM_ROOT
+                        / "components"
+                        / "clm"
+                        / "src"
+                        / "fates"
+                        / "tools"
+                        / "FatesPFTIndexSwapper.py"
+                    ),
+                    "--pft-indices",
+                    ",".join(fates_indices),
+                    "--fin",
+                    fates_param_path_value,
+                    "--fout",
+                    output,
+                ],
+                None,
+                schemas.CaseStatus.FATES_INDICES_SET,
+            )
+            shutil.move(output, fates_param_path_value)
         else:
             raise Exception("Could not find FATES param file")
 
