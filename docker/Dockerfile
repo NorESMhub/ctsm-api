@@ -76,8 +76,6 @@ RUN wget -q https://github.com/esmf-org/esmf/archive/refs/tags/ESMF_8_2_0.tar.gz
 RUN rm -rf /tmp/sources
 
 RUN pip install --upgrade pip setuptools
-RUN pip install poetry
-RUN poetry config virtualenvs.create false
 
 WORKDIR /ctsm-api
 
@@ -85,10 +83,10 @@ COPY alembic /ctsm-api/alembic
 COPY app /ctsm-api/app
 COPY docker/entrypoint* /ctsm-api/docker/
 COPY scripts /ctsm-api/scripts
-COPY alembic.ini mypy.ini pyproject.toml poetry.lock /ctsm-api/
+COPY alembic.ini mypy.ini requirements.txt /ctsm-api/
 
 RUN chmod +x /ctsm-api/docker/entrypoint*
 
-RUN poetry install
+RUN pip install -r requirements.txt
 
 EXPOSE 8000
