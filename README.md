@@ -1,6 +1,6 @@
 # Application Programming Interface for CTSM
 
-This repository contains the API and Dockerfile for the [NorESM-LSP](https://noresmhub.github.io/noresm-land-sites-platform/).
+This repository contains an API and Dockerfile for containerised CTSM applications.
 
 ## Setup and Run the Dev Server
 
