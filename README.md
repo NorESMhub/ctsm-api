@@ -1,3 +1,7 @@
+# Application Programming Interface for CTSM
+
+This repository contains the API and Dockerfile for the [NorESM-LSP](https://noresmhub.github.io/noresm-land-sites-platform/).
+
 ## Setup and Run the Dev Server
 
 To run the services locally or with docker, first you need to create a `.env` file in your project root directory.
