@@ -1,3 +1,7 @@
+# Application Programming Interface for CTSM
+
+This repository contains an API and Dockerfile for containerised CTSM applications.
+
 ## Setup and Run the Dev Server
 
 To run the services locally or with docker, first you need to create a `.env` file in your project root directory.
