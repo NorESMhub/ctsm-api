@@ -41,7 +41,8 @@ async def catch_exceptions_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """
-    Using this middleware we can return exceptions to the client as needed, while letting CORS middleware being applied.
+    Using this middleware we can return exceptions to the client as needed,
+    while letting CORS middleware being applied.
     Otherwise, errors won't be returned for requests from clients with different origins.
     """
     origin = request.headers.get("Origin")

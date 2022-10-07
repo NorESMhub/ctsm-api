@@ -243,7 +243,7 @@ class CaseBase(BaseModel):
                         ):
                             if not next(
                                 filter(
-                                    lambda c: c.value == validated_value,
+                                    lambda c: c.value == validated_value,  # noqa: B023
                                     variable_config.validation.choices,
                                 ),
                                 None,
