@@ -1,10 +1,16 @@
 import hashlib
+import io
 import json
 import re
+import shutil
 from datetime import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union, cast
+from zipfile import ZipFile
 
+import requests
+from fastapi import UploadFile
 from pydantic import BaseModel, parse_file_as, root_validator
 from slugify import slugify
 
@@ -114,34 +120,40 @@ class CaseBase(BaseModel):
     create_task_id: Optional[str] = None
     run_task_id: Optional[str] = None
     compset: str
-    res: str
     variables: List[CaseVariable] = []
     fates_indices: Optional[str]
     env: Dict[str, str] = {}
-    driver: CTSMDriver = CTSMDriver.mct
-    data_url: str
+    driver: CTSMDriver = CTSMDriver.nuopc
+    data_url: Optional[str]
 
     class Config:
         orm_mode = True
         schema_extra = {
             "example": {
-                "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
-                "res": "1x1_ALP1",
+                "compset": "2000_DATM%GSWP3v1_CLM51%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
                 "variables": [
                     {"name": "STOP_OPTION", "value": "nmonths"},
                     {"name": "STOP_N", "value": 3},
                 ],
-                "driver": CTSMDriver.mct,
+                "driver": CTSMDriver.nuopc,
                 "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",
             }
         }
 
+    @classmethod
+    def __get_validators__(cls) -> Generator[Any, None, None]:
+        yield cls.validate_to_json
+
+    @classmethod
+    def validate_to_json(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return cls(**json.loads(value))
+        return value
+
     @staticmethod
     def generate_id(
         compset: str,
-        res: str,
         variables: List[CaseVariable],
-        data_url: str,
         driver: CTSMDriver,
         ctsm_tag: str,
     ) -> str:
@@ -152,9 +164,7 @@ class CaseBase(BaseModel):
         hash_parts = "_".join(
             [
                 compset,
-                res,
                 json.dumps(list(map(lambda v: v.dict(), variables))),
-                data_url,
                 driver,
                 ctsm_tag,
             ]
@@ -164,6 +174,13 @@ class CaseBase(BaseModel):
 
     @root_validator
     def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values["driver"] not in settings.CTSM_DRIVERS:
+            raise ValueError(f"Driver {values['driver']} not supported")
+
+        for required_field in ["compset"]:
+            if required_field not in values:
+                raise ValueError(f"Missing required field: {required_field}")
+
         if not values["id"]:
             variables = values["variables"]
             validated_variables = []
@@ -299,9 +316,7 @@ class CaseBase(BaseModel):
 
             values["id"] = cls.generate_id(
                 values["compset"],
-                values["res"],
                 validated_variables,
-                values["data_url"],
                 values["driver"],
                 values["ctsm_tag"],
             )
@@ -311,13 +326,61 @@ class CaseBase(BaseModel):
             else:
                 case_folder_name = values["id"]
 
-            cesm_data_root = str(settings.DATA_ROOT / case_folder_name)
+            case_data_root = str(settings.DATA_ROOT / case_folder_name)
             values["env"] = {
-                "CESMDATAROOT": cesm_data_root,
+                "CASE_DATA_ROOT": case_data_root,
                 "CASE_FOLDER_NAME": case_folder_name,
             }
 
         return values
+
+    def validate_data_file(self, data_file: UploadFile | None) -> None:
+        if data_file and self.data_url:
+            raise ValueError(
+                "You must provide either a data file or the data_url attribute, not both."
+            )
+
+        if self.data_url:
+            response = requests.get(self.data_url, stream=True)
+            content_type = response.headers.get("content-type", "")
+            data_file_obj = io.BytesIO(response.raw.read())
+        elif data_file:
+            content_type = data_file.content_type
+            data_file_obj = io.BytesIO(data_file.file.read())
+        else:
+            raise ValueError(
+                "You must provide either a data file or the data_url attribute."
+            )
+
+        if "application/zip" not in content_type.lower():
+            raise ValueError("Data must be a valid zip file.")
+
+        data_output_path = Path(self.env["CASE_DATA_ROOT"])
+        if data_output_path.exists():
+            shutil.rmtree(data_output_path)
+        data_output_path.mkdir(parents=True)
+
+        with ZipFile(data_file_obj, "r") as zf:
+            extract_path = Path(data_output_path)
+            zf.extractall(extract_path)
+
+        try:
+            with open(extract_path / "user_mods" / "shell_commands", "r") as f:
+                shell_commands = f.read()
+        except FileNotFoundError:
+            raise ValueError("Data must contain a user_mods/shell_commands file.")
+
+        lon = re.search(r"PTS_LON=(?P<lon>\d+(?:\.\d+)?)", shell_commands)
+        lat = re.search(r"PTS_LAT=(?P<lat>\d+(?:\.\d+)?)", shell_commands)
+
+        if not lon or not lat:
+            raise ValueError("Data must contain PTS_LON and PTS_LAT variables.")
+
+        with open(extract_path / "user_mods" / "shell_commands", "w") as f:
+            # Write a new shell_commands file to avoid running any malicious code
+            f.write(f"./xmlchange CLM_USRDAT_DIR={extract_path}\n")
+            f.write(f"./xmlchange PTS_LON={lon.group('lon')}\n")
+            f.write(f"./xmlchange PTS_LAT={lat.group('lat')}\n")
 
 
 class CaseCreateDB(CaseBase):

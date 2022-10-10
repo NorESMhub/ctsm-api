@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
+from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from app import models, schemas, tasks
@@ -13,8 +14,15 @@ from app.tasks.celery_app import celery_app
 
 class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpdate]):
     def create(
-        self, db: Session, *, obj_in: Union[schemas.CaseBase, Dict[str, Any]]
+        self,
+        db: Session,
+        *,
+        obj_in: Union[schemas.CaseBase, Dict[str, Any]],
+        data_file: UploadFile | None = None,
     ) -> models.CaseModel:
+        assert isinstance(obj_in, schemas.CaseBase)
+        obj_in.validate_data_file(data_file)
+
         data = schemas.CaseCreateDB(
             **(obj_in.dict() if isinstance(obj_in, schemas.CaseBase) else obj_in)
         )
@@ -45,9 +53,9 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
             if archive_path.exists():
                 os.remove(archive_path)
 
-            cesm_data_root = Path(existing_case.env["CESMDATAROOT"])
-            if cesm_data_root.exists():
-                shutil.rmtree(cesm_data_root)
+            case_data_root = Path(existing_case.env["CASE_DATA_ROOT"])
+            if case_data_root.exists():
+                shutil.rmtree(case_data_root)
 
             if existing_case.create_task_id:
                 celery_app.AsyncResult(existing_case.create_task_id).forget()

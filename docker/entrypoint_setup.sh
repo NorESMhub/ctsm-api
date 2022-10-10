@@ -21,6 +21,8 @@ export MPICC=mpicc
 export MPIFC=mpif90
 export MPIF90=mpif90
 export MPIF77=mpif77
+# if CESMDATAROOT is changed, also change in entrypoint_setup.sh and other relevant places.
+export CESMDATAROOT=/ctsm-api/resources/data/shared
 
 EOF
 
@@ -32,5 +34,7 @@ export MPICC=mpicc
 export MPIFC=mpif90
 export MPIF90=mpif90
 export MPIF77=mpif77
+# if CESMDATAROOT is changed, also change in entrypoint_setup.sh and other relevant places.
+export CESMDATAROOT=/ctsm-api/resources/data/shared
 
-ln -fs /ctsm-api/resources/dotcime "$HOME"/.cime
+ln -fs /ctsm-api/docker/dotcime "$HOME"/.cime

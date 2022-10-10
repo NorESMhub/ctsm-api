@@ -26,7 +26,7 @@ def check_ctsm(errors: List[str]) -> None:
         return
 
     proc = subprocess.run(
-        ["git", "describe"], cwd=settings.CTSM_ROOT, capture_output=True
+        ["git", "describe", "--tags"], cwd=settings.CTSM_ROOT, capture_output=True
     )
     if proc.returncode != 0 or proc.stdout.strip().decode("utf8") != settings.CTSM_TAG:
         errors.append("CTSM is not setup correctly. Run `setup_ctsm` first.")

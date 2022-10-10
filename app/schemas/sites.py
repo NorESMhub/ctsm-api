@@ -10,7 +10,6 @@ class SiteProperties(BaseModel):
     name: str
     description: Optional[str]
     compset: str
-    res: str
     url: str
     # List of site specific variables that cannot be edited by the user.
     # These are readonly variables in `variables_config.json` and are set from the site properties.

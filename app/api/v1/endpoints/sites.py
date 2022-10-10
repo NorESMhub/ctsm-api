@@ -66,7 +66,6 @@ def create_site_case(
     data = schemas.CaseBase(
         name=site_case.case_name,
         compset=site.compset,
-        res=site.res,
         variables=site_case.variables,
         data_url=site.url,
         driver=site_case.driver,

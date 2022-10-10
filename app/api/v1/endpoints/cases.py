@@ -1,7 +1,7 @@
 from typing import Any, List
 from zipfile import ZipFile
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -51,11 +51,18 @@ def get_case(
 
 
 @router.post("/", response_model=schemas.CaseWithTaskInfo)
-def create_case(data: schemas.CaseBase, db: Session = Depends(get_db)) -> Any:
+def create_case(
+    case_attrs: schemas.CaseBase = Body(...),
+    data_file: UploadFile | None = None,
+    db: Session = Depends(get_db),
+) -> Any:
     """
     Create a new case with the given parameters.
     """
-    case = crud.case.create(db, obj_in=data)
+    try:
+        case = crud.case.create(db, obj_in=case_attrs, data_file=data_file)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
 
 

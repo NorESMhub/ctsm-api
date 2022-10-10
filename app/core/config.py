@@ -12,13 +12,16 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
+CESMDATAROOT = (
+    DATA_ROOT / "shared"
+)  # if this is changed, also change in entrypoint_setup.sh and other relevant places.
 ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
 VARIABLES_CONFIG_PATH = PROJECT_ROOT / "resources" / "config" / "variables_config.json"
 
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 
 
-for path in [CASES_ROOT, ARCHIVES_ROOT]:
+for path in [CESMDATAROOT, CASES_ROOT, ARCHIVES_ROOT]:
     if not path.exists():
         path.mkdir(parents=True)
 
@@ -68,7 +71,8 @@ class Settings(BaseSettings):
     SKIP_CTSM_CHECKS: bool = False
     CTSM_TAG: str
     CTSM_REPO: AnyHttpUrl = "https://github.com/ESCOMP/CTSM/"  # type: ignore
-    MACHINE_NAME: str = "container"
+    MACHINE_NAME: str = Field("docker", const=True)
+    CESMDATAROOT: Path = Field(CESMDATAROOT, const=True)
     CTSM_DRIVERS: List[CTSMDriver] = [CTSMDriver.mct, CTSMDriver.nuopc]
 
     class Config:

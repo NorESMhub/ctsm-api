@@ -1,15 +1,11 @@
-import io
 import json
 import os
 import shutil
 import subprocess
-import tarfile
 import tempfile
 import time
 from pathlib import Path
 from typing import List, Optional, Union, cast
-
-import requests
 
 from app import crud, models, schemas
 from app.core import settings
@@ -73,46 +69,46 @@ def run_cmd(
 @celery_app.task
 def create_case(case: models.CaseModel) -> str:
     case_path = settings.CASES_ROOT / case.env["CASE_FOLDER_NAME"]
-
-    try:
-        cesm_data_root = Path(case.env["CESMDATAROOT"])
-    except KeyError:
-        raise Exception("CESMDATAROOT environment variable is not set")
-
-    if not cesm_data_root.exists():
-        response = requests.get(case.data_url, stream=True)
-        with tarfile.open(fileobj=io.BytesIO(response.raw.read()), mode="r") as f:
-            f.extractall(path=str(cesm_data_root))
+    case_data_root = Path(case.env["CASE_DATA_ROOT"])
 
     logger.info(
         f"Creating case {case.id} with the following attributes:\n"
         f"Path: {case_path}\n"
         f"Compset: {case.compset}\n"
-        f"Res: {case.res}\n"
         f"Variables: {json.dumps(case.variables, indent=2)}\n"
         f"Driver: {case.driver}\n"
     )
 
     shutil.rmtree(case_path, ignore_errors=True)
 
+    create_new_case_cmd = [
+        str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
+        "--case",
+        str(case_path),
+        "--compset",
+        case.compset,
+        "--driver",
+        case.driver,
+        "--res",
+        "CLM_USRDAT",
+        "--machine",
+        settings.MACHINE_NAME,
+        "--run-unsupported",
+        "--handle-preexisting-dirs",
+        "r",
+    ]
+
+    if (case_data_root / "user_mods").exists():
+        create_new_case_cmd.extend(
+            [
+                "--user-mods-dirs",
+                str(case_data_root / "user_mods"),
+            ]
+        )
+
     run_cmd(
         case,
-        [
-            str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
-            "--case",
-            str(case_path),
-            "--compset",
-            case.compset,
-            "--res",
-            case.res,
-            "--driver",
-            case.driver,
-            "--machine",
-            settings.MACHINE_NAME,
-            "--run-unsupported",
-            "--handle-preexisting-dirs",
-            "r",
-        ],
+        create_new_case_cmd,
         None,
         schemas.CaseStatus.CREATED,
     )
@@ -146,7 +142,7 @@ def create_case(case: models.CaseModel) -> str:
 
             if variable_config.append_input_path:
                 assert isinstance(value, str)
-                value = str(cesm_data_root / Path(value))
+                value = str(case_data_root / Path(value))
 
             if variable_config.category == "ctsm_xml":
                 xml_change_flags.append(f"{variable.name}={value}")
@@ -180,11 +176,7 @@ def create_case(case: models.CaseModel) -> str:
 @celery_app.task
 def run_case(case: models.CaseModel) -> str:
     case_path = settings.CASES_ROOT / case.env["CASE_FOLDER_NAME"]
-
-    try:
-        cesm_data_root = Path(case.env["CESMDATAROOT"])
-    except KeyError:
-        raise Exception("CESMDATAROOT environment variable is not set")
+    case_data_root = Path(case.env["CASE_DATA_ROOT"])
 
     run_cmd(case, ["./case.build"], case_path, schemas.CaseStatus.BUILT)
 
@@ -224,7 +216,7 @@ def run_case(case: models.CaseModel) -> str:
 
             if fates_paramfile_variable_config.append_input_path:
                 fates_param_path_value = str(
-                    cesm_data_root / Path(fates_param_path_str)
+                    case_data_root / Path(fates_param_path_str)
                 )
             else:
                 fates_param_path_value = fates_param_path_str
