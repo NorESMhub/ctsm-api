@@ -81,7 +81,7 @@ WORKDIR /ctsm-api
 
 COPY alembic /ctsm-api/alembic
 COPY app /ctsm-api/app
-COPY docker/dotcime /ctsm-api/docker/
+COPY docker/dotcime /ctsm-api/docker/dotcime
 COPY docker/entrypoint* /ctsm-api/docker/
 COPY scripts /ctsm-api/scripts
 COPY alembic.ini mypy.ini requirements.txt /ctsm-api/
