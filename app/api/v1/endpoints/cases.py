@@ -26,14 +26,17 @@ def get_case_variables_config() -> Any:
     return schemas.CaseVariableConfig.get_variables_config()
 
 
-@router.get("/", response_model=List[schemas.CaseBase])
+@router.get("/", response_model=List[schemas.CaseWithTaskInfo])
 def get_cases(
     db: Session = Depends(get_db),
 ) -> Any:
     """
     Get all cases.
     """
-    return crud.case.get_all(db)
+    return [
+        schemas.CaseWithTaskInfo.get_case_with_task_info(case, site)
+        for (case, site) in crud.case.get_all_cases_with_site(db)
+    ]
 
 
 @router.get("/{case_id}", response_model=schemas.CaseWithTaskInfo)
@@ -44,10 +47,11 @@ def get_case(
     """
     Get the case with the given id.
     """
-    case = crud.case.get(db, id=case_id)
-    if not case:
+    case_and_site = crud.case.get_case_with_site(db, id=case_id)
+    if not case_and_site:
         return None
-    return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
+    (case, site) = case_and_site
+    return schemas.CaseWithTaskInfo.get_case_with_task_info(case, site)
 
 
 @router.post("/", response_model=schemas.CaseWithTaskInfo)
@@ -63,22 +67,30 @@ def create_case(
         case = crud.case.create(db, obj_in=case_attrs, data_file=data_file)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return schemas.CaseWithTaskInfo.get_case_with_task_info(case)
+    case_with_site = crud.case.get_case_with_site(db, id=case.id)
+    if not case_with_site:
+        # This should never happen.
+        raise HTTPException(status_code=400, detail="Case not found")
+    (case, site) = case_with_site
+    return schemas.CaseWithTaskInfo.get_case_with_task_info(case, site)
 
 
 @router.post("/{case_id}", response_model=schemas.CaseWithTaskInfo)
 def run_case(case_id: str, db: Session = Depends(get_db)) -> Any:
-    case = crud.case.get(db, id=case_id)
-    if not case:
+    case_and_site = crud.case.get_case_with_site(db, id=case_id)
+    if not case_and_site:
         return None
+
+    (case, site) = case_and_site
 
     task = tasks.run_case.delay(case)
     return schemas.CaseWithTaskInfo.get_case_with_task_info(
         crud.case.update(
             db,
             db_obj=case,
-            obj_in={"status": schemas.CaseStatus.BUILDING, "run_task_id": task.id},
-        )
+            obj_in={"status": schemas.CaseRunStatus.BUILDING, "run_task_id": task.id},
+        ),
+        site,
     )
 
 
@@ -98,10 +110,12 @@ def download_case(case_id: str, db: Session = Depends(get_db)) -> Any:
     """
     Download a compressed tarball of the case with the given id.
     """
-    case = crud.case.get(db, id=case_id)
+    case_and_site = crud.case.get_case_with_site(db, id=case_id)
 
-    if not case:
+    if not case_and_site:
         return None
+
+    (case, site) = case_and_site
 
     case_folder_name = case.env["CASE_FOLDER_NAME"]
 

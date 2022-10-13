@@ -1,7 +1,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastapi import UploadFile
 from sqlalchemy.orm import Session
@@ -12,7 +12,31 @@ from app.crud.base import CRUDBase
 from app.tasks.celery_app import celery_app
 
 
-class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpdate]):
+class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseDBCreate, schemas.CaseDBUpdate]):
+    def get_case_with_site(
+        self, db: Session, *, id: str
+    ) -> Optional[Tuple[models.CaseModel, Optional[str]]]:
+        return (
+            db.query(self.model, models.SiteCaseModel.name)
+            .outerjoin(
+                models.SiteCaseModel, models.SiteCaseModel.case_id == self.model.id
+            )
+            .filter(self.model.id == id)
+            .first()
+        )
+
+    def get_all_cases_with_site(
+        self, db: Session
+    ) -> List[Tuple[models.CaseModel, Optional[str]]]:
+        return (
+            db.query(self.model, models.SiteCaseModel.name)
+            .outerjoin(
+                models.SiteCaseModel, models.SiteCaseModel.case_id == self.model.id
+            )
+            .order_by(self.model.id)
+            .all()
+        )
+
     def create(
         self,
         db: Session,
@@ -23,7 +47,7 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
         assert isinstance(obj_in, schemas.CaseBase)
         obj_in.validate_data_file(data_file)
 
-        data = schemas.CaseCreateDB(
+        data = schemas.CaseDBCreate(
             **(obj_in.dict() if isinstance(obj_in, schemas.CaseBase) else obj_in)
         )
         case_id = data.id
@@ -40,9 +64,10 @@ class CRUDCase(CRUDBase[models.CaseModel, schemas.CaseCreateDB, schemas.CaseUpda
         return self.update(db, db_obj=new_case, obj_in={"create_task_id": task.id})
 
     def remove(self, db: Session, *, id: str) -> Optional[models.CaseModel]:  # type: ignore[override]
-        existing_case = self.get(db, id=id)
+        existing_case_and_site = self.get_case_with_site(db, id=id)
 
-        if existing_case:
+        if existing_case_and_site:
+            (existing_case, _) = existing_case_and_site
             case_path = settings.CASES_ROOT / existing_case.env["CASE_FOLDER_NAME"]
             if case_path.exists():
                 shutil.rmtree(case_path)

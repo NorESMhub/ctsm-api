@@ -11,14 +11,15 @@ from zipfile import ZipFile
 
 import requests
 from fastapi import UploadFile
-from pydantic import BaseModel, parse_file_as, root_validator
+from pydantic import BaseModel, Field, parse_file_as, root_validator
 from slugify import slugify
 
 from app.core import settings
 from app.tasks.celery_app import celery_app
 
 from .constants import (
-    CaseStatus,
+    CaseCreateStatus,
+    CaseRunStatus,
     CTSMDriver,
     VariableCategory,
     VariableType,
@@ -115,16 +116,19 @@ class CaseBase(BaseModel):
     id: str = ""
     name: str = ""
     ctsm_tag: str = settings.CTSM_TAG
-    status: CaseStatus = CaseStatus.INITIALISED
-    date_created: datetime = datetime.now()
+    status: CaseCreateStatus | CaseRunStatus = CaseCreateStatus.INITIALISED
+    date_created: datetime = Field(default_factory=datetime.now)
     create_task_id: Optional[str] = None
     run_task_id: Optional[str] = None
     compset: str
+    lat: Optional[float]
+    lon: Optional[float]
     variables: List[CaseVariable] = []
     fates_indices: Optional[str]
     env: Dict[str, str] = {}
     driver: CTSMDriver = CTSMDriver.nuopc
     data_url: Optional[str]
+    data_digest: str = ""
 
     class Config:
         orm_mode = True
@@ -136,7 +140,7 @@ class CaseBase(BaseModel):
                     {"name": "STOP_N", "value": 3},
                 ],
                 "driver": CTSMDriver.nuopc,
-                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",
+                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_noresm_landsites/v1.0.0/default/ALP1.zip",
             }
         }
 
@@ -150,27 +154,35 @@ class CaseBase(BaseModel):
             return cls(**json.loads(value))
         return value
 
-    @staticmethod
-    def generate_id(
-        compset: str,
-        variables: List[CaseVariable],
-        driver: CTSMDriver,
-        ctsm_tag: str,
-    ) -> str:
+    def set_id(self) -> None:
         """
         Case id is a hash of the given arguments.
         This value is also used as the case path under `resources/cases/`.
         """
         hash_parts = "_".join(
             [
-                compset,
-                json.dumps(list(map(lambda v: v.dict(), variables))),
-                driver,
-                ctsm_tag,
+                self.name,
+                self.compset,
+                json.dumps(list(map(lambda v: v.dict(), self.variables))),
+                self.driver,
+                self.ctsm_tag,
+                self.data_digest,
             ]
         )
-        case_id = bytes(hash_parts.encode("utf-8"))
-        return hashlib.md5(case_id).hexdigest()
+        self.id = hashlib.md5(bytes(hash_parts.encode("utf-8"))).hexdigest()
+
+        if self.name:
+            case_folder_name = f"{self.id}_{slugify(self.name)}"
+        else:
+            case_folder_name = self.id
+
+        case_data_root = str(settings.DATA_ROOT / case_folder_name)
+        self.env.update(
+            {
+                "CASE_DATA_ROOT": case_data_root,
+                "CASE_FOLDER_NAME": case_folder_name,
+            }
+        )
 
     @root_validator
     def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
@@ -314,24 +326,6 @@ class CaseBase(BaseModel):
 
             values["ctsm_tag"] = settings.CTSM_TAG
 
-            values["id"] = cls.generate_id(
-                values["compset"],
-                validated_variables,
-                values["driver"],
-                values["ctsm_tag"],
-            )
-
-            if values["name"]:
-                case_folder_name = f"{values['id']}_{slugify(values['name'])}"
-            else:
-                case_folder_name = values["id"]
-
-            case_data_root = str(settings.DATA_ROOT / case_folder_name)
-            values["env"] = {
-                "CASE_DATA_ROOT": case_data_root,
-                "CASE_FOLDER_NAME": case_folder_name,
-            }
-
         return values
 
     def validate_data_file(self, data_file: UploadFile | None) -> None:
@@ -343,10 +337,10 @@ class CaseBase(BaseModel):
         if self.data_url:
             response = requests.get(self.data_url, stream=True)
             content_type = response.headers.get("content-type", "")
-            data_file_obj = io.BytesIO(response.raw.read())
+            data_file_obj = response.raw.read()
         elif data_file:
             content_type = data_file.content_type
-            data_file_obj = io.BytesIO(data_file.file.read())
+            data_file_obj = data_file.file.read()
         else:
             raise ValueError(
                 "You must provide either a data file or the data_url attribute."
@@ -355,12 +349,15 @@ class CaseBase(BaseModel):
         if "application/zip" not in content_type.lower():
             raise ValueError("Data must be a valid zip file.")
 
+        self.data_digest = hashlib.md5(data_file_obj).hexdigest()
+        self.set_id()
+
         data_output_path = Path(self.env["CASE_DATA_ROOT"])
         if data_output_path.exists():
             shutil.rmtree(data_output_path)
         data_output_path.mkdir(parents=True)
 
-        with ZipFile(data_file_obj, "r") as zf:
+        with ZipFile(io.BytesIO(data_file_obj), "r") as zf:
             extract_path = Path(data_output_path)
             zf.extractall(extract_path)
 
@@ -376,6 +373,9 @@ class CaseBase(BaseModel):
         if not lon or not lat:
             raise ValueError("Data must contain PTS_LON and PTS_LAT variables.")
 
+        self.lon = float(lon.group("lon"))
+        self.lat = float(lat.group("lat"))
+
         with open(extract_path / "user_mods" / "shell_commands", "w") as f:
             # Write a new shell_commands file to avoid running any malicious code
             f.write(f"./xmlchange CLM_USRDAT_DIR={extract_path}\n")
@@ -383,20 +383,26 @@ class CaseBase(BaseModel):
             f.write(f"./xmlchange PTS_LAT={lat.group('lat')}\n")
 
 
-class CaseCreateDB(CaseBase):
+class CaseDBCreate(CaseBase):
     pass
 
 
-class CaseUpdate(CaseBase):
+class CaseDBUpdate(CaseBase):
     pass
 
 
-class CaseWithTaskInfo(CaseBase):
+class Case(CaseBase):
+    site: Optional[str] = None
+
+
+class CaseWithTaskInfo(Case):
     create_task: Task
     run_task: Task
 
     @staticmethod
-    def get_case_with_task_info(case: "CaseModel") -> Optional["CaseWithTaskInfo"]:
+    def get_case_with_task_info(
+        case: "CaseModel", site: Optional[str] = None
+    ) -> Optional["CaseWithTaskInfo"]:
         tasks = {}
         for task_id_type in ["create_task_id", "run_task_id"]:
             task_id = getattr(case, task_id_type)
@@ -413,4 +419,6 @@ class CaseWithTaskInfo(CaseBase):
                 }
             tasks[task_id_type[:-3]] = task_dict
 
-        return CaseWithTaskInfo(**CaseBase.from_orm(case).dict(), **tasks)
+        case_dict = CaseBase.from_orm(case).dict()
+        case_dict["site"] = site
+        return CaseWithTaskInfo(**case_dict, **tasks)

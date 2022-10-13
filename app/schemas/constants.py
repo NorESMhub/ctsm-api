@@ -31,17 +31,21 @@ class CTSMDriver(str, Enum):
     mct = "mct"
 
 
-class CaseStatus(str, Enum):
+class CaseCreateStatus(str, Enum):
     INITIALISED = "INITIALISED"
     CREATED = "CREATED"
     SETUP = "SETUP"
     UPDATED = "UPDATED"
-    FATES_PARAMS_UPDATED = "FATES_PARAMS_UPDATED"
-    FATES_INDICES_SET = "FATES INDICES SET"
     CONFIGURED = "CONFIGURED"
+
+
+class CaseRunStatus(str, Enum):
     BUILDING = "BUILDING"
     BUILT = "BUILT"
     INPUT_DATA_READY = "INPUT_DATA_READY"
+    REBUILT = "REBUILT"
+    FATES_PARAMS_UPDATED = "FATES_PARAMS_UPDATED"
+    FATES_INDICES_SET = "FATES INDICES SET"
     SUBMITTED = "SUBMITTED"
 
 
