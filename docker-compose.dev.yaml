@@ -29,5 +29,3 @@ services:
     extends:
       file: docker-compose.yaml
       service: rabbitmq
-    volumes:
-      - .:/ctsm-rabbitmq
