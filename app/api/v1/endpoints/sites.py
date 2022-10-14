@@ -67,7 +67,7 @@ def create_site_case(
         name=site_case.case_name,
         compset=site.compset,
         variables=site_case.variables,
-        data_url=site.url,
+        data_url=site.data_url,
         driver=site_case.driver,
     )
     case = crud.case.create(db, obj_in=data)
