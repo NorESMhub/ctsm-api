@@ -346,7 +346,7 @@ class CaseBase(BaseModel):
                 "You must provide either a data file or the data_url attribute."
             )
 
-        if "application/zip" not in content_type.lower():
+        if "zip" not in content_type.lower():
             raise ValueError("Data must be a valid zip file.")
 
         self.data_digest = hashlib.md5(data_file_obj).hexdigest()
