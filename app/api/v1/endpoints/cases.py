@@ -63,10 +63,7 @@ def create_case(
     """
     Create a new case with the given parameters.
     """
-    try:
-        case = crud.case.create(db, obj_in=case_attrs, data_file=data_file)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    case = crud.case.create(db, obj_in=case_attrs, data_file=data_file)
     case_with_site = crud.case.get_case_with_site(db, id=case.id)
     if not case_with_site:
         # This should never happen.
