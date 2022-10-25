@@ -14,7 +14,7 @@ CASES_ROOT = PROJECT_ROOT / "resources" / "cases"
 DATA_ROOT = PROJECT_ROOT / "resources" / "data"
 CESMDATAROOT = (
     DATA_ROOT / "shared"
-)  # if this is changed, also change in entrypoint_setup.sh and other relevant places.
+)  # if the default value is changed, also change in entrypoint_setup.sh and other relevant places.
 CUSTOM_SITES_DATA_ROOT = DATA_ROOT / "custom_sites"
 ARCHIVES_ROOT = PROJECT_ROOT / "resources" / "archives"
 VARIABLES_CONFIG_PATH = PROJECT_ROOT / "resources" / "config" / "variables_config.json"
@@ -24,11 +24,6 @@ SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
 CTSM_REPO = "https://github.com/ESCOMP/CTSM.git"
 CTSM_VERSION = "ctsm5.1.dev112"
-
-
-for path in [ARCHIVES_ROOT, CASES_ROOT, CESMDATAROOT, CUSTOM_SITES_DATA_ROOT]:
-    if not path.exists():
-        path.mkdir(parents=True)
 
 
 class Settings(BaseSettings):
@@ -83,7 +78,7 @@ class Settings(BaseSettings):
     MODEL_VERSION: str  # This can be a branch name, a tag, or a commit hash
     MODEL_REPO: AnyHttpUrl = CTSM_REPO  # type: ignore
     MACHINE_NAME: str = Field("docker", const=True)
-    CESMDATAROOT: Path = Field(CESMDATAROOT, const=True)
+    CESMDATAROOT: Path = CESMDATAROOT
     MODEL_DRIVERS: List[ModelDriver] = [ModelDriver.mct, ModelDriver.nuopc]
 
     # CTSM settings
@@ -103,6 +98,17 @@ class Settings(BaseSettings):
             ] = f"sqlite:///{PROJECT_ROOT / 'resources'}/cases_test.sqlite"
         if values["MODEL_REPO"].lower() == values["CTSM_REPO"].lower():
             values["CTSM_ROOT"] = values["MODEL_ROOT"]
+
+        for path_var in [
+            "ARCHIVES_ROOT",
+            "CASES_ROOT",
+            "CESMDATAROOT",
+            "CUSTOM_SITES_DATA_ROOT",
+        ]:
+            path_value = values[path_var]
+            if not path_value.exists():
+                path_value.mkdir(parents=True)
+
         return values
 
     class Config:
