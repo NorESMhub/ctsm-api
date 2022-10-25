@@ -22,7 +22,7 @@ VARIABLES_CONFIG_PATH = PROJECT_ROOT / "resources" / "config" / "variables_confi
 SITES_PATH = PROJECT_ROOT / "resources" / "config" / "sites.json"
 
 CTSM_ROOT = PROJECT_ROOT / "resources" / "ctsm"
-CTSM_REPO = AnyHttpUrl("https://github.com/ESCOMP/CTSM.git")
+CTSM_REPO = "https://github.com/ESCOMP/CTSM.git"
 CTSM_VERSION = "ctsm5.1.dev112"
 
 
@@ -92,7 +92,7 @@ class Settings(BaseSettings):
     # Otherwise, we use the existing model.
     ENABLE_DATA_CREATION: bool = True
     CTSM_ROOT: Path = Field(CTSM_ROOT, const=True)
-    CTSM_REPO: AnyHttpUrl = Field(CTSM_REPO, const=True)
+    CTSM_REPO: AnyHttpUrl = Field(CTSM_REPO, const=True)  # type: ignore
     CTSM_VERSION: str = Field(CTSM_VERSION, const=True)
 
     @root_validator

@@ -45,7 +45,7 @@ def setup_model(
         subprocess.run(["git", "checkout", model_version], cwd=model_root)
 
     if use_overwrites:
-        subprocess.run(["rsync", "-ra", "../overwrites", "."], cwd=model_root)
+        subprocess.run(["rsync", "-ra", "../overwrites/", "."], cwd=model_root)
     subprocess.run(["manage_externals/checkout_externals"], cwd=model_root)
 
 
