@@ -12,16 +12,16 @@ from app.db.session import get_db
 router = APIRouter()
 
 
-@router.get("/ctsm-info", response_model=schemas.CTSMInfo)
-def get_ctsm_info() -> Any:
-    return schemas.CTSMInfo.get_ctsm_info()
+@router.get("/model-info", response_model=schemas.ModelInfo)
+def get_model_info() -> Any:
+    return schemas.ModelInfo.get_model_info()
 
 
 # This must come before /{case_id} otherwise it will be handled by get_case.
 @router.get("/variables", response_model=List[schemas.CaseVariableConfig])
 def get_case_variables_config() -> Any:
     """
-    Get the list of CTSM variables config.
+    Get the model variables' config.
     """
     return schemas.CaseVariableConfig.get_variables_config()
 

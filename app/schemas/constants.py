@@ -5,8 +5,8 @@ VariableValue = Union[int, float, str, bool, List[Union[int, float, str, bool]]]
 
 
 class VariableType(str, Enum):
-    """The types are based on what is used in CTSM xml files,
-    except for date, which is char in yyyy-mm-dd format in CTSM."""
+    """The types are based on what is used in the model xml files,
+    except for date, which is char in yyyy-mm-dd format in the model."""
 
     char = "char"
     integer = "integer"
@@ -16,7 +16,7 @@ class VariableType(str, Enum):
 
 
 class VariableCategory(str, Enum):
-    ctsm_xml = "ctsm_xml"
+    xml_var = "xml_var"
     user_nl_clm = "user_nl_clm"
     user_nl_clm_extra = "user_nl_clm_extra"
     user_nl_clm_history_file = "user_nl_clm_history_file"
@@ -24,8 +24,8 @@ class VariableCategory(str, Enum):
     fates_param = "fates_param"
 
 
-class CTSMDriver(str, Enum):
-    """The driver to use with CTSM create_newcase script."""
+class ModelDriver(str, Enum):
+    """The driver to use with the model create_newcase script."""
 
     nuopc = "nuopc"
     mct = "mct"

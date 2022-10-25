@@ -29,10 +29,6 @@ target_metadata = Base.metadata
 # ... etc.
 
 
-def include_name(name, type_, parent_names):
-    return type_ != "table"
-
-
 def run_migrations_offline():
     """Run migrations in 'offline' mode.
 
@@ -51,7 +47,6 @@ def run_migrations_offline():
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
-        include_name=include_name,
     )
 
     with context.begin_transaction():
@@ -78,7 +73,6 @@ def run_migrations_online():
             connection=connection,
             target_metadata=target_metadata,
             compare_type=True,
-            include_name=include_name,
         )
 
         with context.begin_transaction():

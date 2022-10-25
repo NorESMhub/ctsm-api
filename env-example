@@ -2,10 +2,10 @@
 BACKEND_CORS_ORIGINS=["http://localhost:8000", "http://localhost:8080"]
 
 # CTSM
-SKIP_CTSM_CHECKS=0
-CTSM_REPO=https://github.com/ESCOMP/CTSM/
-CTSM_TAG=ctsm5.1.dev083
-CTSM_DRIVERS=["nuopc", "mct"]
+SKIP_MODEL_CHECKS=0
+MODEL_REPO=https://github.com/ESCOMP/CTSM/
+MODEL_VERSION=ctsm5.1.dev083
+MODEL_DRIVERS=["nuopc", "mct"]
 
 # Docker
 PORT=8000

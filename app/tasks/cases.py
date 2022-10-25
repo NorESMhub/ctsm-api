@@ -83,7 +83,7 @@ def create_case(case: models.CaseModel) -> str:
     shutil.rmtree(case_path, ignore_errors=True)
 
     create_new_case_cmd = [
-        str(settings.CTSM_ROOT / "cime" / "scripts" / "create_newcase"),
+        str(settings.MODEL_ROOT / "cime" / "scripts" / "create_newcase"),
         "--case",
         str(case_path),
         "--compset",
@@ -145,7 +145,7 @@ def create_case(case: models.CaseModel) -> str:
                 assert isinstance(value, str)
                 value = str(case_data_root / Path(value))
 
-            if variable_config.category == "ctsm_xml":
+            if variable_config.category == "xml_var":
                 xml_change_flags.append(f"{variable.name}={value}")
             elif (
                 variable_config.category == "user_nl_clm"
@@ -258,7 +258,7 @@ def run_case(case: models.CaseModel) -> str:
                         case,
                         [
                             str(
-                                settings.CTSM_ROOT
+                                settings.MODEL_ROOT
                                 / "components"
                                 / "clm"
                                 / "src"
@@ -287,7 +287,7 @@ def run_case(case: models.CaseModel) -> str:
             case,
             [
                 str(
-                    settings.CTSM_ROOT
+                    settings.MODEL_ROOT
                     / "components"
                     / "clm"
                     / "src"

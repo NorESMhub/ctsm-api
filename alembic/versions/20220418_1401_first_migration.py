@@ -30,7 +30,7 @@ def upgrade():
         sa.Column("data_url", sa.String(length=300), nullable=True),
         sa.Column("data_digest", sa.String(length=300), nullable=False),
         sa.Column("driver", sa.String(length=5), nullable=False),
-        sa.Column("ctsm_tag", sa.String(length=20), nullable=False),
+        sa.Column("model_version", sa.String(length=20), nullable=False),
         sa.Column("env", sa.JSON(), nullable=False),
         sa.Column("status", sa.String(length=20), nullable=False),
         sa.Column("date_created", sa.String(length=30), nullable=False),

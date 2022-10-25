@@ -6,8 +6,8 @@ from .cases import (
     CaseVariable,
     CaseVariableConfig,
     CaseWithTaskInfo,
-    CTSMDriver,
-    CTSMInfo,
+    ModelDriver,
+    ModelInfo,
     VariableCategory,
     VariableType,
 )

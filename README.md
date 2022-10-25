@@ -18,7 +18,6 @@ You can use `env-example` as a template and adjust the variables accordingly. Se
 - Make sure [Poetry](https://python-poetry.org/) is installed in your environment.
 - Install the dependencies: `poetry install`.
 - Set up the database: `./scripts/migrations_forward.sh`.
-- Set up CTSM repo: `./scripts/setup_ctsm.sh`.
 - Run the dev server: `./scripts/run_dev_server.sh`.
 
 ### Run in Docker
@@ -44,13 +43,13 @@ See `docker/entrypoint.sh` to see how permissions are updated when running the d
 
 #### Adjustable Variables in `.env`:
 
-|    Variable    | Required |                                                                                     Description                                                                                      |             Default             | Scope      |
-|:--------------:|:--------:|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------:|------------|
-|   CTSM_REPO    |    No    |                                                                              The CTSM repository to use                                                                              | https://github.com/ESCOMP/CTSM/ | API/Docker |
-|    CTSM_TAG    |   Yes    |                                                                            The CTSM repository tag to use                                                                            |                -                | API/Docker |
-|      PORT      |    No    |                                                                      The port to use for API service in docker                                                                       |              8000               | Docker     |
-|   HOST_USER    |    No    |   Docker host user. If specified for a docker container, ownership of all folders within `resources` will be changed to the container host user<br/>It must be used with HOST_UID    |                -                | Docker     |
-|    HOST_UID    |    No    |                                                  UID of docker host user. See `HOST_ID` above and the docker section for more info                                                   |                -                | Docker     |
+|   Variable    | Required |                                                                                   Description                                                                                   |             Default             | Scope      |
+|:-------------:|:--------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:-------------------------------:|------------|
+|  MODEL_REPO   |    No    |                                                                           The model repository to use                                                                           | https://github.com/ESCOMP/CTSM/ | API/Docker |
+| MODEL_VERSION |   Yes    |                                                                         The model repository tag to use                                                                         |                -                | API/Docker |
+|     PORT      |    No    |                                                                    The port to use for API service in docker                                                                    |              8000               | Docker     |
+|   HOST_USER   |    No    | Docker host user. If specified for a docker container, ownership of all folders within `resources` will be changed to the container host user<br/>It must be used with HOST_UID |                -                | Docker     |
+|   HOST_UID    |    No    |                                                UID of docker host user. See `HOST_ID` above and the docker section for more info                                                |                -                | Docker     |
 
 ### Resources
 

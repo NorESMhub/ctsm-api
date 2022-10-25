@@ -20,7 +20,7 @@ from app.tasks.celery_app import celery_app
 from .constants import (
     CaseCreateStatus,
     CaseRunStatus,
-    CTSMDriver,
+    ModelDriver,
     VariableCategory,
     VariableType,
     VariableValue,
@@ -31,17 +31,17 @@ if TYPE_CHECKING:
     from app.models import CaseModel
 
 
-class CTSMInfo(BaseModel):
+class ModelInfo(BaseModel):
     model: str
     version: str
-    drivers: List[CTSMDriver]
+    drivers: List[ModelDriver]
 
     @staticmethod
-    def get_ctsm_info() -> "CTSMInfo":
-        return CTSMInfo(
-            model=settings.CTSM_REPO,
-            version=settings.CTSM_TAG,
-            drivers=settings.CTSM_DRIVERS,
+    def get_model_info() -> "ModelInfo":
+        return ModelInfo(
+            model=settings.MODEL_REPO,
+            version=settings.MODEL_VERSION,
+            drivers=settings.MODEL_DRIVERS,
         )
 
 
@@ -115,7 +115,7 @@ class CaseVariable(BaseModel):
 class CaseBase(BaseModel):
     id: str = ""
     name: str = ""
-    ctsm_tag: str = settings.CTSM_TAG
+    model_version: str = settings.MODEL_VERSION
     status: CaseCreateStatus | CaseRunStatus = CaseCreateStatus.INITIALISED
     date_created: datetime = Field(default_factory=datetime.now)
     create_task_id: Optional[str] = None
@@ -126,7 +126,7 @@ class CaseBase(BaseModel):
     variables: List[CaseVariable] = []
     fates_indices: Optional[str]
     env: Dict[str, str] = {}
-    driver: CTSMDriver = CTSMDriver.nuopc
+    driver: ModelDriver = ModelDriver.nuopc
     data_url: Optional[str]
     data_digest: str = ""
 
@@ -139,7 +139,7 @@ class CaseBase(BaseModel):
                     {"name": "STOP_OPTION", "value": "nmonths"},
                     {"name": "STOP_N", "value": 3},
                 ],
-                "driver": CTSMDriver.nuopc,
+                "driver": ModelDriver.nuopc,
                 "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_noresm_landsites/v1.0.0/default/ALP1.zip",
             }
         }
@@ -165,7 +165,7 @@ class CaseBase(BaseModel):
                 self.compset,
                 json.dumps(list(map(lambda v: v.dict(), self.variables))),
                 self.driver,
-                self.ctsm_tag,
+                self.model_version,
                 self.data_digest,
             ]
         )
@@ -186,7 +186,7 @@ class CaseBase(BaseModel):
 
     @root_validator
     def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        if values["driver"] not in settings.CTSM_DRIVERS:
+        if values["driver"] not in settings.MODEL_DRIVERS:
             raise ValueError(f"Driver {values['driver']} not supported")
 
         for required_field in ["compset"]:
@@ -324,7 +324,7 @@ class CaseBase(BaseModel):
 
             values["variables"] = validated_variables
 
-            values["ctsm_tag"] = settings.CTSM_TAG
+            values["model_version"] = settings.MODEL_VERSION
 
         return values
 

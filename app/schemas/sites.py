@@ -3,7 +3,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from .cases import CaseVariable, CTSMDriver
+from .cases import CaseVariable, ModelDriver
 
 
 class SiteProperties(BaseModel):
@@ -21,7 +21,7 @@ class SiteCaseCreate(BaseModel):
     site_name: str
     case_name: Optional[str]
     variables: List[CaseVariable] = []
-    driver: CTSMDriver = CTSMDriver.mct
+    driver: ModelDriver = ModelDriver.mct
 
     class Config:
         schema_extra = {
@@ -31,7 +31,7 @@ class SiteCaseCreate(BaseModel):
                     {"name": "STOP_OPTION", "value": "nmonths"},
                     {"name": "STOP_N", "value": 3},
                 ],
-                "driver": CTSMDriver.mct,
+                "driver": ModelDriver.mct,
             }
         }
 

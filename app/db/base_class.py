@@ -1,6 +1,6 @@
 from typing import Any
 
-from sqlalchemy.orm import as_declarative
+from sqlalchemy.ext.declarative import as_declarative
 
 
 @as_declarative()
