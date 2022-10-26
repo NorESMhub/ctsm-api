@@ -85,7 +85,7 @@ class Settings(BaseSettings):
     # CTSM is needed for data creation.
     # If the main model is different from CTSM, we need to clone it in a separate folder called ctsm.
     # Otherwise, we use the existing model.
-    ENABLE_DATA_CREATION: bool = True
+    ENABLE_DATA_CREATION: bool = False
     CTSM_ROOT: Path = Field(CTSM_ROOT, const=True)
     CTSM_REPO: AnyHttpUrl = Field(CTSM_REPO, const=True)  # type: ignore
     CTSM_VERSION: str = Field(CTSM_VERSION, const=True)
@@ -96,6 +96,7 @@ class Settings(BaseSettings):
             values[
                 "SQLALCHEMY_DATABASE_URI"
             ] = f"sqlite:///{PROJECT_ROOT / 'resources'}/cases_test.sqlite"
+
         if values["MODEL_REPO"].lower() == values["CTSM_REPO"].lower():
             values["CTSM_ROOT"] = values["MODEL_ROOT"]
 
