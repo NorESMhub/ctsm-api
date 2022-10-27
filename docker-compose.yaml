@@ -11,7 +11,6 @@ services:
       - HOST_USER=${HOST_USER}
       - HOST_UID=${HOST_UID}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin}@rabbitmq:5672/
-      - MACHINE_NAME=${MACHINE_NAME:-container}
     networks:
       - default
     ports:
@@ -29,7 +28,6 @@ services:
       - HOST_USER=${HOST_USER}
       - HOST_UID=${HOST_UID}
       - CELERY_BROKER_URL=amqp://${RABBITMQ_DEFAULT_USER:-admin}:${RABBITMQ_DEFAULT_PASS:-admin}@rabbitmq:5672/
-      - MACHINE_NAME=${MACHINE_NAME:-container}
     networks:
       - default
     volumes:

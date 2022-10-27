@@ -3,18 +3,17 @@ from typing import List, Optional
 
 from pydantic import BaseModel
 
-from .cases import CaseVariable, CTSMDriver
+from .cases import CaseVariable, ModelDriver
 
 
 class SiteProperties(BaseModel):
     name: str
     description: Optional[str]
     compset: str
-    res: str
-    url: str
+    data_url: str
     # List of site specific variables that cannot be edited by the user.
     # These are readonly variables in `variables_config.json` and are set from the site properties.
-    # These are mainly path variables in the site data folder, fetched from the `url` property.
+    # These are mainly path variables in the site data folder, fetched from the `data_url` property.
     config: Optional[List[CaseVariable]]
 
 
@@ -22,7 +21,7 @@ class SiteCaseCreate(BaseModel):
     site_name: str
     case_name: Optional[str]
     variables: List[CaseVariable] = []
-    driver: CTSMDriver = CTSMDriver.mct
+    driver: ModelDriver = ModelDriver.mct
 
     class Config:
         schema_extra = {
@@ -32,7 +31,7 @@ class SiteCaseCreate(BaseModel):
                     {"name": "STOP_OPTION", "value": "nmonths"},
                     {"name": "STOP_N", "value": 3},
                 ],
-                "driver": CTSMDriver.mct,
+                "driver": ModelDriver.mct,
             }
         }
 

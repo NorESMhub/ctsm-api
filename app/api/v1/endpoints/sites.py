@@ -66,13 +66,12 @@ def create_site_case(
     data = schemas.CaseBase(
         name=site_case.case_name,
         compset=site.compset,
-        res=site.res,
         variables=site_case.variables,
-        data_url=site.url,
+        data_url=site.data_url,
         driver=site_case.driver,
     )
     case = crud.case.create(db, obj_in=data)
-    case_task = schemas.CaseWithTaskInfo.get_case_with_task_info(case)
+    case_task = schemas.CaseWithTaskInfo.get_case_with_task_info(case, site.name)
     assert case_task  # This should never fail
     obj_in = schemas.SiteCaseDBCreate(
         name=site_case.site_name,

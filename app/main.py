@@ -8,15 +8,13 @@ from starlette.responses import Response
 
 from app.api.v1.api import api_router
 from app.core import settings
-from app.utils.dependencies import check_dependencies
+from app.utils.dependencies import setup_ctsm, setup_model
 from app.utils.logger import logger
 
-if not settings.SKIP_CTSM_CHECKS:
-    try:
-        check_dependencies()
-    except Exception as e:
-        logger.error(e)
-        exit(1)
+if not settings.SKIP_MODEL_CHECKS:
+    setup_model()
+    if settings.ENABLE_DATA_CREATION:
+        setup_ctsm()
 
 app = FastAPI(
     title="CTSM API",
@@ -41,7 +39,8 @@ async def catch_exceptions_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
     """
-    Using this middleware we can return exceptions to the client as needed, while letting CORS middleware being applied.
+    Using this middleware we can return exceptions to the client as needed,
+    while letting CORS middleware being applied.
     Otherwise, errors won't be returned for requests from clients with different origins.
     """
     origin = request.headers.get("Origin")

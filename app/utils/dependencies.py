@@ -1,121 +1,81 @@
+import re
 import subprocess
-from typing import List
+from pathlib import Path
 
 from app.core import settings
-from app.utils.logger import logger
 
 
-def check_git(errors: List[str]) -> None:
+def setup_model(
+    model_root: Path = settings.MODEL_ROOT,
+    model_repo: str = settings.MODEL_REPO,
+    model_version: str = settings.MODEL_VERSION,
+    use_overwrites: bool = True,
+) -> None:
     """
-    Check if git is installed.
+    Clone the model and switch to the correct tag as specified in the settings.
     """
     try:
         proc = subprocess.run(["git", "--version"], capture_output=True)
         if proc.returncode != 0:
-            errors.append("Git is not installed.")
+            raise RuntimeError("Could not find a working git installation.")
     except FileNotFoundError:
-        errors.append("Git is not installed.")
+        raise RuntimeError("Could not find a working git installation.")
 
-
-def check_ctsm(errors: List[str]) -> None:
-    """
-    Check if the correct version of CTSM is available in `resources/ctsm`.
-    """
-    if not settings.CTSM_ROOT.exists():
-        errors.append("CTSM is not setup. Run `setup_ctsm` first.")
-        return
+    if not model_root.exists():
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                model_repo,
+                model_root,
+            ]
+        )
+        subprocess.run(["git", "checkout", model_version], cwd=model_root)
 
     proc = subprocess.run(
-        ["git", "describe"], cwd=settings.CTSM_ROOT, capture_output=True
+        ["git", "describe", "--tags"], cwd=model_root, capture_output=True
     )
-    if proc.returncode != 0 or proc.stdout.strip().decode("utf8") != settings.CTSM_TAG:
-        errors.append("CTSM is not setup correctly. Run `setup_ctsm` first.")
+    if not (
+        proc.returncode == 0 and proc.stdout.strip().decode("utf8") == model_version
+    ):
+        subprocess.run(["git", "fetch", "--all"], cwd=model_root)
 
+        subprocess.run(["git", "restore", "."], cwd=model_root)
 
-def check_dependencies() -> None:
-    """
-    Check if the required dependencies are installed.
-    """
+        subprocess.run(["git", "checkout", model_version], cwd=model_root)
 
-    errors: List[str] = []
-
-    check_git(errors)
-
-    if not errors:
-        # Only run this if git is installed
-        check_ctsm(errors)
-
-    if errors:
-        raise Exception("\n".join(errors))
-
-
-def checkout_externals() -> None:
-    """
-    Checkout CTSM externals.
-    """
-    proc = subprocess.run(
-        ["manage_externals/checkout_externals"],
-        cwd=settings.CTSM_ROOT,
-        capture_output=True,
-    )
-    if proc.returncode != 0:
-        logger.error(f"Could not checkout externals: {proc.stderr.decode('utf-8')}.")
+    if use_overwrites:
+        subprocess.run(["rsync", "-ra", "../overwrites/", "."], cwd=model_root)
+    subprocess.run(["manage_externals/checkout_externals"], cwd=model_root)
 
 
 def setup_ctsm() -> None:
-    """
-    TODO: add better checkout and cleanup process.
-    Clone CTSM with and switch to the correct tag as specified in the settings.
-    """
-    if settings.CTSM_ROOT.exists():
-        proc = subprocess.run(
-            ["git", "describe"], cwd=settings.CTSM_ROOT, capture_output=True
+    if settings.MODEL_ROOT != settings.CTSM_ROOT:
+        setup_model(
+            model_root=settings.CTSM_ROOT,
+            model_repo=settings.CTSM_REPO,
+            model_version=settings.CTSM_VERSION,
+            use_overwrites=False,
         )
-        if (
-            proc.returncode == 0
-            and proc.stdout.strip().decode("utf8") == settings.CTSM_TAG
-        ):
-            checkout_externals()
-            return
-
-        proc = subprocess.run(
-            ["git", "fetch", "--all"], cwd=settings.CTSM_ROOT, capture_output=True
-        )
-        if proc.returncode != 0:
-            logger.warning(
-                "Could not fetch the latest changes from CTSM remote: "
-                f"{proc.stderr.decode('utf-8')}."
-            )
-
-        proc = subprocess.run(
-            ["git", "checkout", settings.CTSM_TAG],
-            cwd=settings.CTSM_ROOT,
-            capture_output=True,
-        )
-        if proc.returncode != 0:
-            logger.error(f"Could not checkout CTSM {settings.CTSM_TAG}.")
-            return
-
-        checkout_externals()
-        return
-
-    proc = subprocess.run(
-        [
-            "git",
-            "clone",
-            "-b",
-            settings.CTSM_TAG,
-            settings.CTSM_REPO,
-            "resources/ctsm",
-        ],
-        capture_output=True,
+    with open(
+        settings.CTSM_ROOT / "tools" / "site_and_regional" / "default_data.cfg", "r"
+    ) as data_config_file:
+        data_config = data_config_file.read()
+    data_config = re.sub(
+        r"clmforcingindir\s+=.*\n",
+        f"clmforcingindir = {settings.CESMDATAROOT}\n",
+        data_config,
     )
-    if proc.returncode != 0:
-        logger.error(f"Could not clone CTSM: {proc.stderr.decode('utf-8')}.")
-        return
-
-    checkout_externals()
-
-
-if __name__ == "__main__":
-    setup_ctsm()
+    atm_forcing_path = (
+        settings.CESMDATAROOT / "atm" / "datm7",
+        "atm_forcing.datm7.GSWP3.0.5d.v1.c170516",
+    )
+    data_config = re.sub(
+        r"dir\s+=.*\n",
+        f"dir = {atm_forcing_path}\n",
+        data_config,
+    )
+    with open(
+        settings.CTSM_ROOT / "tools" / "site_and_regional" / "default_data.cfg", "w"
+    ) as data_config_file:
+        data_config_file.write(data_config)

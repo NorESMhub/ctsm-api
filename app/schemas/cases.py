@@ -1,19 +1,26 @@
 import hashlib
+import io
 import json
 import re
+import shutil
 from datetime import datetime
 from functools import lru_cache
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Union, cast
+from zipfile import ZipFile
 
-from pydantic import BaseModel, parse_file_as, root_validator
+import requests
+from fastapi import UploadFile
+from pydantic import BaseModel, Field, parse_file_as, root_validator
 from slugify import slugify
 
 from app.core import settings
 from app.tasks.celery_app import celery_app
 
 from .constants import (
-    CaseStatus,
-    CTSMDriver,
+    CaseCreateStatus,
+    CaseRunStatus,
+    ModelDriver,
     VariableCategory,
     VariableType,
     VariableValue,
@@ -24,17 +31,17 @@ if TYPE_CHECKING:
     from app.models import CaseModel
 
 
-class CTSMInfo(BaseModel):
+class ModelInfo(BaseModel):
     model: str
     version: str
-    drivers: List[CTSMDriver]
+    drivers: List[ModelDriver]
 
     @staticmethod
-    def get_ctsm_info() -> "CTSMInfo":
-        return CTSMInfo(
-            model=settings.CTSM_REPO,
-            version=settings.CTSM_TAG,
-            drivers=settings.CTSM_DRIVERS,
+    def get_model_info() -> "ModelInfo":
+        return ModelInfo(
+            model=settings.MODEL_REPO,
+            version=settings.MODEL_VERSION,
+            drivers=settings.MODEL_DRIVERS,
         )
 
 
@@ -108,62 +115,84 @@ class CaseVariable(BaseModel):
 class CaseBase(BaseModel):
     id: str = ""
     name: str = ""
-    ctsm_tag: str = settings.CTSM_TAG
-    status: CaseStatus = CaseStatus.INITIALISED
-    date_created: datetime = datetime.now()
+    model_version: str = settings.MODEL_VERSION
+    status: CaseCreateStatus | CaseRunStatus = CaseCreateStatus.INITIALISED
+    date_created: datetime = Field(default_factory=datetime.now)
     create_task_id: Optional[str] = None
     run_task_id: Optional[str] = None
     compset: str
-    res: str
+    lat: Optional[float]
+    lon: Optional[float]
     variables: List[CaseVariable] = []
     fates_indices: Optional[str]
     env: Dict[str, str] = {}
-    driver: CTSMDriver = CTSMDriver.mct
-    data_url: str
+    driver: ModelDriver = ModelDriver.nuopc
+    data_url: Optional[str]
+    data_digest: str = ""
 
     class Config:
         orm_mode = True
         schema_extra = {
             "example": {
-                "compset": "2000_DATM%1PTGSWP3_CLM50%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
-                "res": "1x1_ALP1",
+                "compset": "2000_DATM%GSWP3v1_CLM51%FATES_SICE_SOCN_MOSART_SGLC_SWAV",
                 "variables": [
                     {"name": "STOP_OPTION", "value": "nmonths"},
                     {"name": "STOP_N", "value": 3},
                 ],
-                "driver": CTSMDriver.mct,
-                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_fates_platform/inputdata_version2.0.0_ALP1.tar",
+                "driver": ModelDriver.nuopc,
+                "data_url": "https://ns2806k.webs.sigma2.no/EMERALD/EMERALD_platform/inputdata_noresm_landsites/v1.0.0/default/ALP1.zip",
             }
         }
 
-    @staticmethod
-    def generate_id(
-        compset: str,
-        res: str,
-        variables: List[CaseVariable],
-        data_url: str,
-        driver: CTSMDriver,
-        ctsm_tag: str,
-    ) -> str:
+    @classmethod
+    def __get_validators__(cls) -> Generator[Any, None, None]:
+        yield cls.validate_to_json
+
+    @classmethod
+    def validate_to_json(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return cls(**json.loads(value))
+        return value
+
+    def set_id(self) -> None:
         """
         Case id is a hash of the given arguments.
         This value is also used as the case path under `resources/cases/`.
         """
         hash_parts = "_".join(
             [
-                compset,
-                res,
-                json.dumps(list(map(lambda v: v.dict(), variables))),
-                data_url,
-                driver,
-                ctsm_tag,
+                self.name,
+                self.compset,
+                json.dumps(list(map(lambda v: v.dict(), self.variables))),
+                self.driver,
+                self.model_version,
+                self.data_digest,
             ]
         )
-        case_id = bytes(hash_parts.encode("utf-8"))
-        return hashlib.md5(case_id).hexdigest()
+        self.id = hashlib.md5(bytes(hash_parts.encode("utf-8"))).hexdigest()
+
+        if self.name:
+            case_folder_name = f"{self.id}_{slugify(self.name)}"
+        else:
+            case_folder_name = self.id
+
+        case_data_root = str(settings.DATA_ROOT / case_folder_name)
+        self.env.update(
+            {
+                "CASE_DATA_ROOT": case_data_root,
+                "CASE_FOLDER_NAME": case_folder_name,
+            }
+        )
 
     @root_validator
     def validate_case(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        if values["driver"] not in settings.MODEL_DRIVERS:
+            raise ValueError(f"Driver {values['driver']} not supported")
+
+        for required_field in ["compset"]:
+            if required_field not in values:
+                raise ValueError(f"Missing required field: {required_field}")
+
         if not values["id"]:
             variables = values["variables"]
             validated_variables = []
@@ -243,7 +272,7 @@ class CaseBase(BaseModel):
                         ):
                             if not next(
                                 filter(
-                                    lambda c: c.value == validated_value,
+                                    lambda c: c.value == validated_value,  # noqa: B023
                                     variable_config.validation.choices,
                                 ),
                                 None,
@@ -295,45 +324,85 @@ class CaseBase(BaseModel):
 
             values["variables"] = validated_variables
 
-            values["ctsm_tag"] = settings.CTSM_TAG
-
-            values["id"] = cls.generate_id(
-                values["compset"],
-                values["res"],
-                validated_variables,
-                values["data_url"],
-                values["driver"],
-                values["ctsm_tag"],
-            )
-
-            if values["name"]:
-                case_folder_name = f"{values['id']}_{slugify(values['name'])}"
-            else:
-                case_folder_name = values["id"]
-
-            cesm_data_root = str(settings.DATA_ROOT / case_folder_name)
-            values["env"] = {
-                "CESMDATAROOT": cesm_data_root,
-                "CASE_FOLDER_NAME": case_folder_name,
-            }
+            values["model_version"] = settings.MODEL_VERSION
 
         return values
 
+    def validate_data_file(self, data_file: UploadFile | None) -> None:
+        if data_file and self.data_url:
+            raise ValueError(
+                "You must provide either a data file or the data_url attribute, not both."
+            )
 
-class CaseCreateDB(CaseBase):
+        if self.data_url:
+            response = requests.get(self.data_url, stream=True)
+            content_type = response.headers.get("content-type", "")
+            data_file_obj = response.raw.read()
+        elif data_file:
+            content_type = data_file.content_type
+            data_file_obj = data_file.file.read()
+        else:
+            raise ValueError(
+                "You must provide either a data file or the data_url attribute."
+            )
+
+        if "zip" not in content_type.lower():
+            raise ValueError("Data must be a valid zip file.")
+
+        self.data_digest = hashlib.md5(data_file_obj).hexdigest()
+        self.set_id()
+
+        data_output_path = Path(self.env["CASE_DATA_ROOT"])
+        if data_output_path.exists():
+            shutil.rmtree(data_output_path)
+        data_output_path.mkdir(parents=True)
+
+        with ZipFile(io.BytesIO(data_file_obj), "r") as zf:
+            extract_path = Path(data_output_path)
+            zf.extractall(extract_path)
+
+        try:
+            with open(extract_path / "user_mods" / "shell_commands", "r") as f:
+                shell_commands = f.read()
+        except FileNotFoundError:
+            raise ValueError("Data must contain a user_mods/shell_commands file.")
+
+        lon = re.search(r"PTS_LON=(?P<lon>\d+(?:\.\d+)?)", shell_commands)
+        lat = re.search(r"PTS_LAT=(?P<lat>\d+(?:\.\d+)?)", shell_commands)
+
+        if not lon or not lat:
+            raise ValueError("Data must contain PTS_LON and PTS_LAT variables.")
+
+        self.lon = float(lon.group("lon"))
+        self.lat = float(lat.group("lat"))
+
+        with open(extract_path / "user_mods" / "shell_commands", "w") as f:
+            # Write a new shell_commands file to avoid running any malicious code
+            f.write(f"./xmlchange CLM_USRDAT_DIR={extract_path}\n")
+            f.write(f"./xmlchange PTS_LON={lon.group('lon')}\n")
+            f.write(f"./xmlchange PTS_LAT={lat.group('lat')}\n")
+
+
+class CaseDBCreate(CaseBase):
     pass
 
 
-class CaseUpdate(CaseBase):
+class CaseDBUpdate(CaseBase):
     pass
 
 
-class CaseWithTaskInfo(CaseBase):
+class Case(CaseBase):
+    site: Optional[str] = None
+
+
+class CaseWithTaskInfo(Case):
     create_task: Task
     run_task: Task
 
     @staticmethod
-    def get_case_with_task_info(case: "CaseModel") -> Optional["CaseWithTaskInfo"]:
+    def get_case_with_task_info(
+        case: "CaseModel", site: Optional[str] = None
+    ) -> Optional["CaseWithTaskInfo"]:
         tasks = {}
         for task_id_type in ["create_task_id", "run_task_id"]:
             task_id = getattr(case, task_id_type)
@@ -350,4 +419,6 @@ class CaseWithTaskInfo(CaseBase):
                 }
             tasks[task_id_type[:-3]] = task_dict
 
-        return CaseWithTaskInfo(**CaseBase.from_orm(case).dict(), **tasks)
+        case_dict = CaseBase.from_orm(case).dict()
+        case_dict["site"] = site
+        return CaseWithTaskInfo(**case_dict, **tasks)
