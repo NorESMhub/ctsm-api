@@ -43,8 +43,6 @@ You need a recent Python environment that has `xarray` with `netcdf4` installed 
 On SAGA:
 
 ```
-# Load Python module
-module load Python/3.10.4-GCCcore-11.3.0
 # Load Anaconda module
 module load Anaconda3/2022.05
 # Install new conda environment
@@ -142,7 +140,6 @@ and add (NB! Adjust your project account, machine dependent module versions/name
 set -o errexit  # Exit the script on any error
 
 module --quiet purge  # Reset the modules to the system default
-module load Python/3.10.4-GCCcore-11.3.0
 module load git/2.36.0-GCCcore-11.3.0-nodocs
 
 module load Anaconda3/2022.05
