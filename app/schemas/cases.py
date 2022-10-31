@@ -367,8 +367,8 @@ class CaseBase(BaseModel):
         except FileNotFoundError:
             raise ValueError("Data must contain a user_mods/shell_commands file.")
 
-        lon = re.search(r"PTS_LON=(?P<lon>\d+(?:\.\d+)?)", shell_commands)
-        lat = re.search(r"PTS_LAT=(?P<lat>\d+(?:\.\d+)?)", shell_commands)
+        lon = re.search(r"PTS_LON=(?P<lon>-?\d+(?:\.\d+)?)", shell_commands)
+        lat = re.search(r"PTS_LAT=(?P<lat>-?\d+(?:\.\d+)?)", shell_commands)
 
         if not lon or not lat:
             raise ValueError("Data must contain PTS_LON and PTS_LAT variables.")
