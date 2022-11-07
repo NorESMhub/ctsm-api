@@ -20,7 +20,7 @@ If you want to use different versions of these data (WARNING! Might break the mo
 - `<ctsm-api-root>/data/create_data.py` -> Adapt name of atmospheric forcing
 - `<ctsm-root>/tools/site_and_regional/default_data.cfg` -> Adapt other file names
 
-This document provides a working example tested on a remote server ([SAGA](https://documentation.sigma2.no/hpc_machines/saga.html])) with Anaconda. The time it takes to create the data is dependent on the machine and the amount of cores you use; on Saga, creating data for a single site requires approximately 1.5 hours.
+This document provides a working example tested on a remote server, [SAGA](https://documentation.sigma2.no/hpc_machines/saga.html), with Anaconda. The time it takes to create the data is dependent on the machine and the amount of cores you use; on Saga, creating data for a single site requires approximately 1.5 hours.
 
 ## 1 Clone `CTSM` and `ctsm-api`, checkout externals
 
