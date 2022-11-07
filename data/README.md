@@ -2,7 +2,7 @@
 
 The scripts provided here wrap around the code related to `CTSM/tools/site_and_regional/subset_data` for single point data creation, available in [the CTSM repository](https://github.com/ESCOMP/CTSM/tree/ctsm5.1.dev112/tools/site_and_regional). A tutorial is available [here](https://github.com/NCAR/CTSM-Tutorial-2022/blob/main/notebooks/Day2a_GenericSinglePoint.ipynb). Please ensure to attribute this work if you use this code.
 
-_Kaveh Karimi & Lasse Keetz, 31-10-2021._
+_Kaveh Karimi & Lasse Keetz, 31-10-2022._
 
 # Instructions to create input data for a custom site
 
@@ -13,7 +13,7 @@ The scripts to create new input data with this `ctsm-api` version require the fo
 - `<cesm-data-root>/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_16pfts_Irrig_CMIP6_simyr2000_c190214.nc`
 - `<cesm-data-root>/lnd/clm2/surfdata_map/release-clm5.0.18/surfdata_0.9x1.25_hist_78pfts_CMIP6_simyr2000_c190214.nc`
 
-The datasets are available at https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/.
+The datasets are available at https://svn-ccsm-inputdata.cgd.ucar.edu/trunk/inputdata/. **Warning!** The datasets have a total size of approx. 2.3 TB, make sure you have enough disk space available before downloading files.
 
 If you want to use different versions of these data (WARNING! Might break the model, only if you know what you are doing!), make sure they exist in the given paths and adapt the names of the files in:
 
@@ -54,7 +54,7 @@ source activate subset-data-env  # conda activate subset-data-env
 ## 3 Add new site information to config file
 
 Edit `<ctsm-api-root>/data/sites.json` or use it as a template to create a new file.
-You need to provide `lon` and `lat` coordinates and a site name (convention: three capital letters plus optional integer). You can include one or multiple sites (see example below).
+You need to provide `lon` and `lat` coordinates and a site name (convention: three capital letters plus optional integer). Site names must be alphanumeric (i.e., no special characters) without spaces. You can include one or multiple sites (see example below).
 
 Example for a `sites.json` file:
 
@@ -95,7 +95,7 @@ To create a `.zip` file with input data for custom sites, you need to run `<ctsm
 | Flag        | Description           | Example  |
 | ------------- |:-------------:| ----- |
 | `--ctsm-root`      | Root path to local CTSM installation with checked out externals. | `--ctsm-root ~/CTSM` |
-| `--cesm-data-root` | Root path to global CESM dataset netCDF files. | `--ctsm-root /cluster/shared/noresm/inputdata` |
+| `--cesm-data-root` | Root path to global CESM dataset netCDF files. | `--cesm-data-root /cluster/shared/noresm/inputdata` |
 | `--output-dir`     | Path where the zip files with extracted input data will be created. OBS! Make sure this directory already exists, otherwise the scripts will fail! | `--output-dir /cluster/shared/noresm/sites` |
 | `--sites`      | Path to a `sites.json` instruction file as described in 3. | `--sites sites.json` |
 | `--cpu-count`      | OPTIONAL. Provide a number of CPUs for multiprocessing. Will use all available CPUs if omitted.  | `--cpu-count 10` |
@@ -160,4 +160,4 @@ Then run:
 sbatch create_site_data.sh
 ```
 
-You can check the state of the job by entering `squeue -u <your-user-name>` and by investigating the `slurm-<job-id>.out` log files created in the current working directory.
+You can check the state of the job by entering `squeue --me` (or `squeue -u <user-name>`) and by investigating the `slurm-<job-id>.out` log files created in the current working directory.
