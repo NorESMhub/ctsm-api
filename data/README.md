@@ -161,3 +161,7 @@ sbatch create_site_data.sh
 ```
 
 You can check the state of the job by entering `squeue --me` (or `squeue -u <user-name>`) and by investigating the `slurm-<job-id>.out` log files created in the current working directory.
+
+# Adding sites to the LSP
+
+To make a site integrated and visible to everyone, make a pull request to upload the zipped input file to [NorESMhub/noresm-lsp-data/sites](https://github.com/NorESMhub/noresm-lsp-data/tree/main/sites) (or another stable storage url where it can be downloaded from). Then, add the site(s) to your fork/branch of [noresm-land-sites-platform/resources/config/sites.json](https://github.com/NorESMhub/noresm-land-sites-platform/blob/main/resources/config/sites.json) following the same template as the other sites, and make a new pull request.
