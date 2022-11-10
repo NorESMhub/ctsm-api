@@ -1,5 +1,7 @@
 # Application Programming Interface for CTSM
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7310240.svg)](https://doi.org/10.5281/zenodo.7310240)
+
 This repository contains an API and Dockerfile for containerised CTSM applications.
 
 ## Setup and Run the Dev Server
